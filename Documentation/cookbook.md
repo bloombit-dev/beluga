@@ -9,7 +9,7 @@ import Binja.FFI (shutdown)
 
 main :: IO ()
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   shutdown
@@ -25,7 +25,7 @@ import Binja.FFI (shutdown)
 
 main :: IO ()
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   funcs <- Binja.BinaryView.functions view
@@ -44,7 +44,7 @@ import Binja.FFI (shutdown)
 
 main :: IO ()
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   mlilSSAs <- Binja.Mlil.instructions view
@@ -61,7 +61,7 @@ import Binja.Function
 import Binja.FFI (shutdown)
 
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   -- Get functions by name
@@ -87,7 +87,7 @@ import Binja.FFI (shutdown)
 
 main :: IO ()
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   codeRefs' <- Binja.ReferenceSource.codeRefs view 4295938392
@@ -107,7 +107,7 @@ import Binja.Mlil
 import Binja.FFI (shutdown)
 
 main = do
-  let filename = "/Users/bloombit/projects/binaryninja-haskell/FaceTime"
+  let filename = "/Users/bloombit/projects/engine/FaceTime"
   let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   -- Get function by address
