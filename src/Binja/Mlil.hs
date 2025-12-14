@@ -28,7 +28,7 @@ startIndex func arch' addr = do
       -- in function
       if startI >= count
         then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count
-        else return startI
+        else pure startI
 
 -- Convert an instruction index into an expression index
 instIndexToExprIndex :: BNMlilFunctionPtr -> Word64 -> IO CSize
@@ -65,7 +65,7 @@ getExprList func expr operand =
     count <- fromIntegral <$> peek countPtr
     xs <-
       if rawPtr == nullPtr || count == 0
-        then return []
+        then pure []
         else peekArray count rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
     mapM (create func . fromIntegral) xs
@@ -74,7 +74,7 @@ getExpr :: BNMlilSSAFunctionPtr -> CSize -> IO MediumLevelILSSAInstruction
 getExpr = create
 
 getInt :: BNMediumLevelILInstruction -> CSize -> IO Int
-getInt inst operand = return $ fromIntegral $ getOp inst operand
+getInt inst operand = pure $ fromIntegral $ getOp inst operand
 
 getIntList :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO [Int]
 getIntList func expr operand =
@@ -83,10 +83,10 @@ getIntList func expr operand =
     count <- fromIntegral <$> peek countPtr
     xs <-
       if rawPtr == nullPtr || count == 0
-        then return []
+        then pure []
         else peekArray count rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
-    return $ map fromIntegral xs
+    pure $ map fromIntegral xs
 
 varFromID :: CULLong -> IO BNVariable
 varFromID index' =
@@ -101,7 +101,7 @@ getVarList func expr operand =
     count <- fromIntegral <$> peek countPtr
     xs <-
       if rawPtr == nullPtr || count == 0
-        then return []
+        then pure []
         else peekArray count rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
     mapM varFromID xs
@@ -114,20 +114,20 @@ getSSAVarList func expr operand =
     let pairCount = count `div` 2
     result <-
       if rawPtr == nullPtr || pairCount == 0
-        then return []
+        then pure []
         else forM [0 .. pairCount - 1] $ \j -> do
           varId <- peekElemOff rawPtr (j * 2)
           ver <- peekElemOff rawPtr (j * 2 + 1)
           v <- varFromID varId
-          return (BNSSAVariable v (fromIntegral ver))
+          pure (BNSSAVariable v (fromIntegral ver))
     when (rawPtr /= nullPtr) $
       c_BNMediumLevelILFreeOperandList rawPtr
-    return result
+    pure result
 
 getSSAVar :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVar inst varOP version' = do
   rawVar <- varFromID $ fromIntegral $ getOp inst varOP
-  return $ BNSSAVariable rawVar $ fromIntegral $ getOp inst version'
+  pure $ BNSSAVariable rawVar $ fromIntegral $ getOp inst version'
 
 getSSAVarAndDest :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVarAndDest = getSSAVar
@@ -135,9 +135,9 @@ getSSAVarAndDest = getSSAVar
 getFloat :: BNMediumLevelILInstruction -> CSize -> IO Double
 getFloat inst index' =
   case mlSize inst of
-    4 -> return $ float2Double $ castWord32ToFloat w32
-    8 -> return $ castWord64ToDouble w64
-    _ -> return $ fromIntegral value
+    4 -> pure $ float2Double $ castWord32ToFloat w32
+    8 -> pure $ castWord64ToDouble w64
+    _ -> pure $ fromIntegral value
   where
     w64 = fromIntegral value :: Word64
     w32 = fromIntegral $ w64 .&. 0xffffffff :: Word32
@@ -160,14 +160,14 @@ getTargetMap func expr operand =
     let pairCount = count `div` 2
     pairs <-
       if rawPtr == nullPtr || pairCount == 0
-        then return []
+        then pure []
         else forM [0 .. pairCount - 1] $ \j -> do
           key <- peekElemOff rawPtr (j * 2)
           target' <- peekElemOff rawPtr (j * 2 + 1)
-          return (key, target')
+          pure (key, target')
     when (rawPtr /= nullPtr) $
       c_BNMediumLevelILFreeOperandList rawPtr
-    return pairs
+    pure pairs
 
 getIntrinsicIL :: BNMediumLevelILInstruction -> BNMlilSSAFunctionPtr -> CSize -> IO ILIntrinsic
 getIntrinsicIL inst func operand = do
@@ -176,7 +176,7 @@ getIntrinsicIL inst func operand = do
   let arch' = architecture rawFunc
   archTy <- getArch arch'
   intrinsic' <- getIntrinsic archTy index'
-  return $ ILIntrinsic index' arch' archTy intrinsic'
+  pure $ ILIntrinsic index' arch' archTy intrinsic'
 
 getConstraint :: BNMlilSSAFunctionPtr -> BNMediumLevelILInstruction -> CSize -> IO BNPossibleValueSet
 getConstraint func inst operand = do
@@ -196,7 +196,7 @@ basicBlocks func =
       else do
         refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNBasicBlockPtr)
         c_BNFreeBasicBlockList arrPtr count
-        return refs
+        pure refs
 
 blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
 blockToInstructions block = do
@@ -214,7 +214,7 @@ instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
   blocks <- basicBlocks func
   perBlock <- mapM blockToInstructions blocks
-  return $ concatMap (\l -> l : children l) $ concat perBlock
+  pure $ concatMap (\l -> l : children l) $ concat perBlock
 
 -- All instructions in a binary view
 instructions :: BNBinaryViewPtr -> IO [MediumLevelILSSAInstruction]
@@ -222,7 +222,7 @@ instructions view = do
   rawFuncs <- Binja.BinaryView.functions view
   mlilFuncs <- mapM Binja.Function.mlil rawFuncs
   insts <- mapM instructionsFromFunc mlilFuncs
-  return $ concat insts
+  pure $ concat insts
 
 callerSites :: BNBinaryViewPtr -> BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
 callerSites view func = do
@@ -232,7 +232,7 @@ callerSites view func = do
   -- lift via fromLlilRef
   refs' <- Binja.ReferenceSource.codeRefs view start'
   insts' <- mapM Binja.Mlil.fromLlilRef refs'
-  return $ filter isLocalcall insts'
+  pure $ filter isLocalcall insts'
   where
     isLocalcall :: MediumLevelILSSAInstruction -> Bool
     isLocalcall (Localcall _) = True
@@ -276,10 +276,10 @@ extractCallDestSymbol view callInst =
         Constant c -> constantToSymbol view c
         Load _ -> do
           -- Prelude.print $ "Unhandled load instruction: " ++ show dest'
-          return Nothing
+          pure Nothing
         VariableInstruction _ -> do
           -- Prelude.print $ "Unhandled variable instruction: " ++ show dest'
-          return Nothing
+          pure Nothing
         _ -> error $ "Unhandled case: " ++ show dest'
 
 getOp :: BNMediumLevelILInstruction -> CSize -> CSize
@@ -303,7 +303,7 @@ create func exprIndex' = do
           }
   case mlOperation rawInst of
     MLIL_NOP -> do
-      return $ MediumLevelILNop $ MediumLevelILNopRec {core = coreInst}
+      pure $ MediumLevelILNop $ MediumLevelILNopRec {core = coreInst}
     MLIL_SET_VAR -> do
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       src' <- getExpr func $ getOp rawInst 1
@@ -313,7 +313,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVar rec
+      pure $ SetVar $ MediumLevelILSetVar rec
     MLIL_SET_VAR_FIELD -> do
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -325,7 +325,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarField rec
+      pure $ SetVar $ MediumLevelILSetVarField rec
     MLIL_SET_VAR_SPLIT -> do
       high' <- varFromID $ fromIntegral $ getOp rawInst 0
       low' <- varFromID $ fromIntegral $ getOp rawInst 1
@@ -337,7 +337,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarSplit rec
+      pure $ SetVar $ MediumLevelILSetVarSplit rec
     MLIL_ASSERT -> do
       src' <- varFromID $ fromIntegral $ getOp rawInst 0
       constraint' <- getConstraint func rawInst 1
@@ -347,7 +347,7 @@ create func exprIndex' = do
                 constraint = constraint',
                 core = coreInst
               }
-      return $ MediumLevelILAssert rec
+      pure $ MediumLevelILAssert rec
     MLIL_FORCE_VER -> do
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       src' <- varFromID $ fromIntegral $ getOp rawInst 1
@@ -357,7 +357,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ MediumLevelILForceVer rec
+      pure $ MediumLevelILForceVer rec
     MLIL_LOAD -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -365,7 +365,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Load $ MediumLevelILLoad rec
+      pure $ Load $ MediumLevelILLoad rec
     MLIL_LOAD_STRUCT -> do
       src' <- getExpr func $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -375,7 +375,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ Load $ MediumLevelILLoadStruct rec
+      pure $ Load $ MediumLevelILLoadStruct rec
     MLIL_STORE -> do
       src' <- getExpr func $ getOp rawInst 0
       dest' <- getExpr func $ getOp rawInst 1
@@ -385,7 +385,7 @@ create func exprIndex' = do
                 dest = dest',
                 core = coreInst
               }
-      return $ Store $ MediumLevelILStore rec
+      pure $ Store $ MediumLevelILStore rec
     MLIL_STORE_STRUCT -> do
       src' <- getExpr func $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -397,7 +397,7 @@ create func exprIndex' = do
                 dest = dest',
                 core = coreInst
               }
-      return $ Store $ MediumLevelILStoreStruct rec
+      pure $ Store $ MediumLevelILStoreStruct rec
     MLIL_VAR -> do
       src' <- varFromID $ fromIntegral $ getOp rawInst 0
       let rec =
@@ -406,7 +406,7 @@ create func exprIndex' = do
                 var = src',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVar rec
+      pure $ VariableInstruction $ MediumLevelILVar rec
     MLIL_VAR_FIELD -> do
       src' <- varFromID $ fromIntegral $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -416,7 +416,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ MediumLevelILVarField rec
+      pure $ MediumLevelILVarField rec
     MLIL_VAR_SPLIT -> do
       high' <- varFromID $ fromIntegral $ getOp rawInst 0
       low' <- varFromID $ fromIntegral $ getOp rawInst 1
@@ -426,7 +426,7 @@ create func exprIndex' = do
                 low = low',
                 core = coreInst
               }
-      return $ MediumLevelILVarSplit rec
+      pure $ MediumLevelILVarSplit rec
     MLIL_ADDRESS_OF -> do
       src' <- varFromID $ fromIntegral $ getOp rawInst 0
       let rec =
@@ -434,7 +434,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ MediumLevelILAddressOf rec
+      pure $ MediumLevelILAddressOf rec
     MLIL_ADDRESS_OF_FIELD -> do
       src' <- varFromID $ fromIntegral $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -444,7 +444,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ MediumLevelILAddressOfField rec
+      pure $ MediumLevelILAddressOfField rec
     MLIL_CONST -> do
       constant' <- getInt rawInst 0
       let rec =
@@ -452,7 +452,7 @@ create func exprIndex' = do
               { constant = constant',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILConst rec
+      pure $ Constant $ MediumLevelILConst rec
     MLIL_CONST_DATA -> do
       rawFunc <- mlilToRawFunction func
       constant' <- getConstantData rawFunc rawInst 0 1
@@ -461,7 +461,7 @@ create func exprIndex' = do
               { constant = constant',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILConstData rec
+      pure $ Constant $ MediumLevelILConstData rec
     MLIL_CONST_PTR -> do
       constant' <- getInt rawInst 0
       let rec =
@@ -469,7 +469,7 @@ create func exprIndex' = do
               { constant = constant',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILConstPtr rec
+      pure $ Constant $ MediumLevelILConstPtr rec
     MLIL_EXTERN_PTR -> do
       constant' <- getInt rawInst 0
       offset' <- getInt rawInst 1
@@ -479,7 +479,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILExternPtr rec
+      pure $ Constant $ MediumLevelILExternPtr rec
     MLIL_FLOAT_CONST -> do
       constant' <- getFloat rawInst 0
       let rec =
@@ -487,7 +487,7 @@ create func exprIndex' = do
               { constant = constant',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILFloatConst rec
+      pure $ Constant $ MediumLevelILFloatConst rec
     MLIL_IMPORT -> do
       constant' <- getInt rawInst 0
       let rec =
@@ -495,7 +495,7 @@ create func exprIndex' = do
               { constant = constant',
                 core = coreInst
               }
-      return $ Constant $ MediumLevelILImport rec
+      pure $ Constant $ MediumLevelILImport rec
     MLIL_ADD -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -505,7 +505,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILAdd rec
+      pure $ Arithmetic $ MediumLevelILAdd rec
     MLIL_ADC -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -517,7 +517,7 @@ create func exprIndex' = do
                 carry = carry',
                 core = coreInst
               }
-      return $ Carry $ MediumLevelILAdc rec
+      pure $ Carry $ MediumLevelILAdc rec
     MLIL_SUB -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -527,7 +527,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILSub rec
+      pure $ Arithmetic $ MediumLevelILSub rec
     MLIL_SBB -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -539,7 +539,7 @@ create func exprIndex' = do
                 carry = carry',
                 core = coreInst
               }
-      return $ Carry $ MediumLevelILSbb rec
+      pure $ Carry $ MediumLevelILSbb rec
     MLIL_AND -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -549,7 +549,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILAnd rec
+      pure $ Arithmetic $ MediumLevelILAnd rec
     MLIL_OR -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -559,7 +559,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILOr rec
+      pure $ Arithmetic $ MediumLevelILOr rec
     MLIL_XOR -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -569,7 +569,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILXor rec
+      pure $ Arithmetic $ MediumLevelILXor rec
     MLIL_LSL -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -579,7 +579,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILLsl rec
+      pure $ Arithmetic $ MediumLevelILLsl rec
     MLIL_LSR -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -589,7 +589,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILLsr rec
+      pure $ Arithmetic $ MediumLevelILLsr rec
     MLIL_ASR -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -599,7 +599,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILAsr rec
+      pure $ Arithmetic $ MediumLevelILAsr rec
     MLIL_ROL -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -609,7 +609,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILRol rec
+      pure $ Arithmetic $ MediumLevelILRol rec
     MLIL_RLC -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -621,7 +621,7 @@ create func exprIndex' = do
                 carry = carry',
                 core = coreInst
               }
-      return $ Carry $ MediumLevelILRlc rec
+      pure $ Carry $ MediumLevelILRlc rec
     MLIL_ROR -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -631,7 +631,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILRor rec
+      pure $ Arithmetic $ MediumLevelILRor rec
     MLIL_RRC -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -643,7 +643,7 @@ create func exprIndex' = do
                 carry = carry',
                 core = coreInst
               }
-      return $ Carry $ MediumLevelILRrc rec
+      pure $ Carry $ MediumLevelILRrc rec
     MLIL_MUL -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -653,7 +653,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILMul rec
+      pure $ Arithmetic $ MediumLevelILMul rec
     MLIL_MULU_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -663,7 +663,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILMuluDp rec
+      pure $ MediumLevelILMuluDp rec
     MLIL_MULS_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -673,7 +673,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILMulsDp rec
+      pure $ MediumLevelILMulsDp rec
     MLIL_DIVU -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -683,7 +683,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILDivu rec
+      pure $ Arithmetic $ MediumLevelILDivu rec
     MLIL_DIVU_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -693,7 +693,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILDivuDp rec
+      pure $ MediumLevelILDivuDp rec
     MLIL_DIVS -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -703,7 +703,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILDivs rec
+      pure $ Arithmetic $ MediumLevelILDivs rec
     MLIL_DIVS_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -713,7 +713,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILDivsDp rec
+      pure $ MediumLevelILDivsDp rec
     MLIL_MODU -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -723,7 +723,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILModu rec
+      pure $ Arithmetic $ MediumLevelILModu rec
     MLIL_MODU_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -733,7 +733,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILModuDp rec
+      pure $ MediumLevelILModuDp rec
     MLIL_MODS -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -743,7 +743,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILMods rec
+      pure $ Arithmetic $ MediumLevelILMods rec
     MLIL_MODS_DP -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -753,7 +753,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ MediumLevelILModsDp rec
+      pure $ MediumLevelILModsDp rec
     MLIL_NEG -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -761,7 +761,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILNeg rec
+      pure $ Arithmetic $ MediumLevelILNeg rec
     MLIL_NOT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -769,7 +769,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILNot rec
+      pure $ Arithmetic $ MediumLevelILNot rec
     MLIL_SX -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -777,7 +777,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILSx rec
+      pure $ Arithmetic $ MediumLevelILSx rec
     MLIL_ZX -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -785,7 +785,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILZx rec
+      pure $ Arithmetic $ MediumLevelILZx rec
     MLIL_LOW_PART -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -793,7 +793,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILLowPart rec
+      pure $ Arithmetic $ MediumLevelILLowPart rec
     MLIL_JUMP -> do
       dest' <- getExpr func $ getOp rawInst 1
       let rec =
@@ -801,7 +801,7 @@ create func exprIndex' = do
               { dest = dest',
                 core = coreInst
               }
-      return $ Terminal $ MediumLevelILJump rec
+      pure $ Terminal $ MediumLevelILJump rec
     MLIL_JUMP_TO -> do
       dest' <- getExpr func $ getOp rawInst 0
       target' <- getTargetMap func exprIndex' 1
@@ -811,7 +811,7 @@ create func exprIndex' = do
                 target = target',
                 core = coreInst
               }
-      return $ Terminal $ MediumLevelILJumpTo rec
+      pure $ Terminal $ MediumLevelILJumpTo rec
     MLIL_RET_HINT -> do
       dest' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -819,7 +819,7 @@ create func exprIndex' = do
               { dest = dest',
                 core = coreInst
               }
-      return $ ControlFlow $ MediumLevelILRetHint rec
+      pure $ ControlFlow $ MediumLevelILRetHint rec
     MLIL_CALL -> do
       output' <- getVarList func exprIndex' 0
       dest' <- getExpr func $ getOp rawInst 2
@@ -831,11 +831,11 @@ create func exprIndex' = do
                 params = params',
                 core = coreInst
               }
-      return $ Localcall $ MediumLevelILCall rec
+      pure $ Localcall $ MediumLevelILCall rec
     MLIL_CALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> return d
+        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
@@ -843,7 +843,7 @@ create func exprIndex' = do
       dest' <- getExpr func $ getOp rawInst 1
       paramsInst <- getExpr func $ getOp rawInst 2
       params' <- case paramsInst of
-        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> return s
+        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
         _ ->
           error $
             "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
@@ -857,7 +857,7 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Localcall $ MediumLevelILCallUntyped rec
+      pure $ Localcall $ MediumLevelILCallUntyped rec
     MLIL_CALL_OUTPUT -> do
       dest' <- getVarList func exprIndex' 0
       let rec =
@@ -865,7 +865,7 @@ create func exprIndex' = do
               { dest = dest',
                 core = coreInst
               }
-      return $ MediumLevelILCallOutput rec
+      pure $ MediumLevelILCallOutput rec
     MLIL_CALL_PARAM -> do
       src' <- getExprList func exprIndex' 0
       let rec =
@@ -873,7 +873,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ MediumLevelILCallParam rec
+      pure $ MediumLevelILCallParam rec
     MLIL_SEPARATE_PARAM_LIST -> do
       params' <- getExprList func exprIndex' 0
       let rec =
@@ -881,7 +881,7 @@ create func exprIndex' = do
               { params = params',
                 core = coreInst
               }
-      return $ MediumLevelILSeparateParamList rec
+      pure $ MediumLevelILSeparateParamList rec
     MLIL_SHARED_PARAM_SLOT -> do
       params' <- getExprList func exprIndex' 0
       let rec =
@@ -889,7 +889,7 @@ create func exprIndex' = do
               { params = params',
                 core = coreInst
               }
-      return $ MediumLevelILSharedParamSlot rec
+      pure $ MediumLevelILSharedParamSlot rec
     MLIL_RET -> do
       src' <- getExprList func exprIndex' 0
       let rec =
@@ -897,9 +897,9 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Return $ MediumLevelILRet rec
+      pure $ Return $ MediumLevelILRet rec
     MLIL_NORET -> do
-      return $ Terminal $ MediumLevelILNoret $ MediumLevelILNoretRec {core = coreInst}
+      pure $ Terminal $ MediumLevelILNoret $ MediumLevelILNoretRec {core = coreInst}
     MLIL_IF -> do
       condition' <- getExpr func $ getOp rawInst 0
       true' <- getInt rawInst 1
@@ -911,7 +911,7 @@ create func exprIndex' = do
                 false = false',
                 core = coreInst
               }
-      return $ Terminal $ MediumLevelILIf rec
+      pure $ Terminal $ MediumLevelILIf rec
     MLIL_GOTO -> do
       dest' <- getInt rawInst 0
       let rec =
@@ -919,7 +919,7 @@ create func exprIndex' = do
               { dest = dest',
                 core = coreInst
               }
-      return $ Terminal $ MediumLevelILGoto rec
+      pure $ Terminal $ MediumLevelILGoto rec
     MLIL_CMP_E -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -929,7 +929,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpE rec
+      pure $ Comparison $ MediumLevelILCmpE rec
     MLIL_CMP_NE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -939,7 +939,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpNe rec
+      pure $ Comparison $ MediumLevelILCmpNe rec
     MLIL_CMP_SLT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -949,7 +949,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpSlt rec
+      pure $ Comparison $ MediumLevelILCmpSlt rec
     MLIL_CMP_ULT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -959,7 +959,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpUlt rec
+      pure $ Comparison $ MediumLevelILCmpUlt rec
     MLIL_CMP_SLE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -969,7 +969,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpSle rec
+      pure $ Comparison $ MediumLevelILCmpSle rec
     MLIL_CMP_ULE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -979,7 +979,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpUle rec
+      pure $ Comparison $ MediumLevelILCmpUle rec
     MLIL_CMP_SGE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -989,7 +989,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpSge rec
+      pure $ Comparison $ MediumLevelILCmpSge rec
     MLIL_CMP_UGE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -999,7 +999,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpUge rec
+      pure $ Comparison $ MediumLevelILCmpUge rec
     MLIL_CMP_SGT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1009,7 +1009,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpSgt rec
+      pure $ Comparison $ MediumLevelILCmpSgt rec
     MLIL_CMP_UGT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1019,7 +1019,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILCmpUgt rec
+      pure $ Comparison $ MediumLevelILCmpUgt rec
     MLIL_TEST_BIT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1029,7 +1029,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILTestBit rec
+      pure $ Comparison $ MediumLevelILTestBit rec
     MLIL_BOOL_TO_INT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1037,7 +1037,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ MediumLevelILBoolToInt rec
+      pure $ MediumLevelILBoolToInt rec
     MLIL_ADD_OVERFLOW -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1047,7 +1047,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILAddOverflow rec
+      pure $ Arithmetic $ MediumLevelILAddOverflow rec
     MLIL_SYSCALL -> do
       output' <- getVarList func exprIndex' 0
       params' <- getExprList func exprIndex' 2
@@ -1057,18 +1057,18 @@ create func exprIndex' = do
                 params = params',
                 core = coreInst
               }
-      return $ Syscall $ MediumLevelILSyscall rec
+      pure $ Syscall $ MediumLevelILSyscall rec
     MLIL_SYSCALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> return d
+        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILSyscallUntyped: expected MediumLevelILCallOutput : "
               ++ show outputInst
       paramInst <- getExpr func $ getOp rawInst 1
       params' <- case paramInst of
-        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> return s
+        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
         _ ->
           error $
             "create: Params of MediumLevelILSyscallUntyped: expected MediumLevelILCallParam : "
@@ -1081,7 +1081,7 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Syscall $ MediumLevelILSyscallUntyped rec
+      pure $ Syscall $ MediumLevelILSyscallUntyped rec
     MLIL_TAILCALL -> do
       output' <- getVarList func exprIndex' 0
       dest' <- getExpr func $ getOp rawInst 2
@@ -1093,11 +1093,11 @@ create func exprIndex' = do
                 params = params',
                 core = coreInst
               }
-      return $ Tailcall $ MediumLevelILTailcall rec
+      pure $ Tailcall $ MediumLevelILTailcall rec
     MLIL_TAILCALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> return d
+        MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILTailCallUntyped: expected MediumLevelILCallOutput : "
@@ -1105,7 +1105,7 @@ create func exprIndex' = do
       dest' <- getExpr func $ getOp rawInst 1
       paramInst <- getExpr func $ getOp rawInst 2
       params' <- case paramInst of
-        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> return s
+        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
         _ ->
           error $
             "create: Param of MediumLevelILTailCallUntyped: expected MediumLevelILCallParam : "
@@ -1119,7 +1119,7 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Tailcall $ MediumLevelILTailcallUntyped rec
+      pure $ Tailcall $ MediumLevelILTailcallUntyped rec
     MLIL_INTRINSIC -> do
       output' <- getVarList func exprIndex' 0
       intrinsic' <- getIntrinsicIL rawInst func 2
@@ -1131,7 +1131,7 @@ create func exprIndex' = do
                 params = params',
                 core = coreInst
               }
-      return $ IntrinsicInstruction $ MediumLevelILIntrinsic rec
+      pure $ IntrinsicInstruction $ MediumLevelILIntrinsic rec
     MLIL_FREE_VAR_SLOT -> do
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       let rec =
@@ -1139,9 +1139,9 @@ create func exprIndex' = do
               { dest = dest',
                 core = coreInst
               }
-      return $ RegisterStack $ MediumLevelILFreeVarSlot rec
+      pure $ RegisterStack $ MediumLevelILFreeVarSlot rec
     MLIL_BP -> do
-      return $ Terminal $ MediumLevelILBp $ MediumLevelILBpRec {core = coreInst}
+      pure $ Terminal $ MediumLevelILBp $ MediumLevelILBpRec {core = coreInst}
     MLIL_TRAP -> do
       vector' <- getInt rawInst 0
       let rec =
@@ -1149,11 +1149,11 @@ create func exprIndex' = do
               { vector = vector',
                 core = coreInst
               }
-      return $ Terminal $ MediumLevelILTrap rec
+      pure $ Terminal $ MediumLevelILTrap rec
     MLIL_UNDEF -> do
-      return $ MediumLevelILUndef $ MediumLevelILUndefRec {core = coreInst}
+      pure $ MediumLevelILUndef $ MediumLevelILUndefRec {core = coreInst}
     MLIL_UNIMPL -> do
-      return $ MediumLevelILUnimpl $ MediumLevelILUnimplRec {core = coreInst}
+      pure $ MediumLevelILUnimpl $ MediumLevelILUnimplRec {core = coreInst}
     MLIL_UNIMPL_MEM -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1161,7 +1161,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Memory $ MediumLevelILUnimplMem rec
+      pure $ Memory $ MediumLevelILUnimplMem rec
     MLIL_FADD -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1171,7 +1171,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFadd rec
+      pure $ Arithmetic $ MediumLevelILFadd rec
     MLIL_FSUB -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1181,7 +1181,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFsub rec
+      pure $ Arithmetic $ MediumLevelILFsub rec
     MLIL_FMUL -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1191,7 +1191,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFmul rec
+      pure $ Arithmetic $ MediumLevelILFmul rec
     MLIL_FDIV -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1201,7 +1201,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFdiv rec
+      pure $ Arithmetic $ MediumLevelILFdiv rec
     MLIL_FSQRT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1209,7 +1209,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFsqrt rec
+      pure $ Arithmetic $ MediumLevelILFsqrt rec
     MLIL_FNEG -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1217,7 +1217,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFneg rec
+      pure $ Arithmetic $ MediumLevelILFneg rec
     MLIL_FABS -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1225,7 +1225,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFabs rec
+      pure $ Arithmetic $ MediumLevelILFabs rec
     MLIL_FLOAT_TO_INT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1233,7 +1233,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFloatToInt rec
+      pure $ Arithmetic $ MediumLevelILFloatToInt rec
     MLIL_INT_TO_FLOAT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1241,7 +1241,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILIntToFloat rec
+      pure $ Arithmetic $ MediumLevelILIntToFloat rec
     MLIL_FLOAT_CONV -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1249,7 +1249,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFloatConv rec
+      pure $ Arithmetic $ MediumLevelILFloatConv rec
     MLIL_ROUND_TO_INT -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1257,7 +1257,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILRoundToInt rec
+      pure $ Arithmetic $ MediumLevelILRoundToInt rec
     MLIL_FLOOR -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1265,7 +1265,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFloor rec
+      pure $ Arithmetic $ MediumLevelILFloor rec
     MLIL_CEIL -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1273,7 +1273,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILCeil rec
+      pure $ Arithmetic $ MediumLevelILCeil rec
     MLIL_FTRUNC -> do
       src' <- getExpr func $ getOp rawInst 0
       let rec =
@@ -1281,7 +1281,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ Arithmetic $ MediumLevelILFtrunc rec
+      pure $ Arithmetic $ MediumLevelILFtrunc rec
     MLIL_FCMP_E -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1291,7 +1291,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpE rec
+      pure $ Comparison $ MediumLevelILFcmpE rec
     MLIL_FCMP_NE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1301,7 +1301,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpNe rec
+      pure $ Comparison $ MediumLevelILFcmpNe rec
     MLIL_FCMP_LT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1311,7 +1311,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpLt rec
+      pure $ Comparison $ MediumLevelILFcmpLt rec
     MLIL_FCMP_LE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1321,7 +1321,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpLe rec
+      pure $ Comparison $ MediumLevelILFcmpLe rec
     MLIL_FCMP_GE -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1331,7 +1331,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpGe rec
+      pure $ Comparison $ MediumLevelILFcmpGe rec
     MLIL_FCMP_GT -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1341,7 +1341,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpGt rec
+      pure $ Comparison $ MediumLevelILFcmpGt rec
     MLIL_FCMP_O -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1351,7 +1351,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpO rec
+      pure $ Comparison $ MediumLevelILFcmpO rec
     MLIL_FCMP_UO -> do
       left' <- getExpr func $ getOp rawInst 0
       right' <- getExpr func $ getOp rawInst 1
@@ -1361,7 +1361,7 @@ create func exprIndex' = do
                 right = right',
                 core = coreInst
               }
-      return $ Comparison $ MediumLevelILFcmpUo rec
+      pure $ Comparison $ MediumLevelILFcmpUo rec
     MLIL_SET_VAR_SSA -> do
       dest' <- getSSAVar rawInst 0 1
       src' <- getExpr func $ getOp rawInst 2
@@ -1371,7 +1371,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarSsa rec
+      pure $ SetVar $ MediumLevelILSetVarSsa rec
     MLIL_SET_VAR_SSA_FIELD -> do
       dest' <- getSSAVarAndDest rawInst 0 1
       prev' <- getSSAVarAndDest rawInst 0 2
@@ -1385,7 +1385,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarSsaField rec
+      pure $ SetVar $ MediumLevelILSetVarSsaField rec
     MLIL_SET_VAR_SPLIT_SSA -> do
       high' <- getSSAVar rawInst 0 1
       low' <- getSSAVar rawInst 2 3
@@ -1397,7 +1397,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarSplitSsa rec
+      pure $ SetVar $ MediumLevelILSetVarSplitSsa rec
     MLIL_SET_VAR_ALIASED -> do
       dest' <- getSSAVarAndDest rawInst 0 1
       prev' <- getSSAVarAndDest rawInst 0 2
@@ -1409,7 +1409,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarAliased rec
+      pure $ SetVar $ MediumLevelILSetVarAliased rec
     MLIL_SET_VAR_ALIASED_FIELD -> do
       dest' <- getSSAVarAndDest rawInst 0 1
       prev' <- getSSAVarAndDest rawInst 0 2
@@ -1423,7 +1423,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILSetVarAliasedField rec
+      pure $ SetVar $ MediumLevelILSetVarAliasedField rec
     MLIL_VAR_SSA -> do
       src' <- getSSAVar rawInst 0 1
       let rec =
@@ -1432,7 +1432,7 @@ create func exprIndex' = do
                 var = src',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVarSsa rec
+      pure $ VariableInstruction $ MediumLevelILVarSsa rec
     MLIL_VAR_SSA_FIELD -> do
       src' <- getSSAVar rawInst 0 1
       offset' <- getInt rawInst 2
@@ -1442,7 +1442,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVarSsaField rec
+      pure $ VariableInstruction $ MediumLevelILVarSsaField rec
     MLIL_VAR_ALIASED -> do
       src' <- getSSAVar rawInst 0 1
       let rec =
@@ -1450,7 +1450,7 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVarAliased rec
+      pure $ VariableInstruction $ MediumLevelILVarAliased rec
     MLIL_VAR_ALIASED_FIELD -> do
       src' <- getSSAVar rawInst 0 1
       offset' <- getInt rawInst 2
@@ -1460,7 +1460,7 @@ create func exprIndex' = do
                 offset = offset',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVarAliasedField rec
+      pure $ VariableInstruction $ MediumLevelILVarAliasedField rec
     MLIL_VAR_SPLIT_SSA -> do
       high' <- getSSAVar rawInst 0 1
       low' <- getSSAVar rawInst 2 3
@@ -1470,7 +1470,7 @@ create func exprIndex' = do
                 low = low',
                 core = coreInst
               }
-      return $ VariableInstruction $ MediumLevelILVarSplitSsa rec
+      pure $ VariableInstruction $ MediumLevelILVarSplitSsa rec
     MLIL_ASSERT_SSA -> do
       src' <- getSSAVar rawInst 0 1
       constraint' <- getConstraint func rawInst 2
@@ -1480,7 +1480,7 @@ create func exprIndex' = do
                 constraint = constraint',
                 core = coreInst
               }
-      return $ MediumLevelILAssertSsa rec
+      pure $ MediumLevelILAssertSsa rec
     MLIL_FORCE_VER_SSA -> do
       dest' <- getSSAVar rawInst 0 1
       src' <- getSSAVar rawInst 2 3
@@ -1490,11 +1490,11 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ MediumLevelILForceVerSsa rec
+      pure $ MediumLevelILForceVerSsa rec
     MLIL_CALL_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d}) -> return d
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILCallSsa: expected MediumLevelILCallOutputSsa : "
@@ -1510,17 +1510,17 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Localcall $ MediumLevelILCallSsa rec
+      pure $ Localcall $ MediumLevelILCallSsa rec
     MLIL_CALL_UNTYPED_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d}) -> return d
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
               ++ show outputInst
       outputDestMemory' <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {destMemory = d}) -> return d
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {destMemory = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
@@ -1528,7 +1528,7 @@ create func exprIndex' = do
       dest' <- getExpr func $ getOp rawInst 1
       paramsInst <- getExpr func $ getOp rawInst 2
       (params', paramsSrcMemory') <- case paramsInst of
-        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = s', srcMemory = sm'}) -> return (s', sm')
+        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = s', srcMemory = sm'}) -> pure (s', sm')
         _ ->
           error $
             "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
@@ -1544,11 +1544,11 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Localcall $ MediumLevelILCallUntypedSsa rec
+      pure $ Localcall $ MediumLevelILCallUntypedSsa rec
     MLIL_SYSCALL_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       (output', outputDestMemory') <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dm}) -> return (d, dm)
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dm}) -> pure (d, dm)
         _ ->
           error $
             "create: Output of MediumLevelILSyscallSsa: expected MediumLevelILCallOutputSsa : "
@@ -1563,18 +1563,18 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Syscall $ MediumLevelILSyscallSsa rec
+      pure $ Syscall $ MediumLevelILSyscallSsa rec
     MLIL_SYSCALL_UNTYPED_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       (output', outputDestMemory') <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dm}) -> return (d, dm)
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dm}) -> pure (d, dm)
         _ ->
           error $
             "create: Output of MediumLevelILSyscallUntypedSsa: expected MediumLevelILCallOutputSsa : "
               ++ show outputInst
       paramInst <- getExpr func $ getOp rawInst 1
       (params', paramsSrcMemory') <- case paramInst of
-        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = p, srcMemory = psm}) -> return (p, psm)
+        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = p, srcMemory = psm}) -> pure (p, psm)
         _ ->
           error $
             "create: Params of MediumLevelILCallOutputSsa: expected MediumLevelILCallParamSsa : "
@@ -1589,11 +1589,11 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Syscall $ MediumLevelILSyscallUntypedSsa rec
+      pure $ Syscall $ MediumLevelILSyscallUntypedSsa rec
     MLIL_TAILCALL_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       (output', outputDestMemory') <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dM}) -> return (d, dM)
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dM}) -> pure (d, dM)
         _ ->
           error $
             "create: Output of MediumLevelILTailcallSsa: expected MediumLevelILCallOutputSsa : "
@@ -1610,11 +1610,11 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Tailcall $ MediumLevelILTailcallSsa rec
+      pure $ Tailcall $ MediumLevelILTailcallSsa rec
     MLIL_TAILCALL_UNTYPED_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       (output', outputDestMemory') <- case outputInst of
-        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dM}) -> return (d, dM)
+        MediumLevelILCallOutputSsa (MediumLevelILCallOutputSsaRec {dest = d, destMemory = dM}) -> pure (d, dM)
         _ ->
           error $
             "create: Output of MediumLevelILTailcallSsa: expected MediumLevelILCallOutputSsa : "
@@ -1622,7 +1622,7 @@ create func exprIndex' = do
       dest' <- getExpr func $ getOp rawInst 1
       paramInst <- getExpr func $ getOp rawInst 2
       params' <- case paramInst of
-        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = p}) -> return p
+        MediumLevelILCallParamSsa (MediumLevelILCallParamSsaRec {src = p}) -> pure p
         _ ->
           error $
             "create: Params of MediumLevelILCallOutputSsa: expected MediumLevelILCallParamSsa : "
@@ -1637,7 +1637,7 @@ create func exprIndex' = do
                 stack = stack',
                 core = coreInst
               }
-      return $ Tailcall $ MediumLevelILTailcallUntypedSsa rec
+      pure $ Tailcall $ MediumLevelILTailcallUntypedSsa rec
     MLIL_CALL_PARAM_SSA -> do
       srcMemory' <- getInt rawInst 0
       src' <- getExprList func exprIndex' 1
@@ -1647,7 +1647,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ MediumLevelILCallParamSsa rec
+      pure $ MediumLevelILCallParamSsa rec
     MLIL_CALL_OUTPUT_SSA -> do
       destMemory' <- getInt rawInst 0
       dest' <- getSSAVarList func exprIndex' 1
@@ -1657,7 +1657,7 @@ create func exprIndex' = do
                 dest = dest',
                 core = coreInst
               }
-      return $ MediumLevelILCallOutputSsa rec
+      pure $ MediumLevelILCallOutputSsa rec
     MLIL_MEMORY_INTRINSIC_OUTPUT_SSA -> do
       destMemory' <- getInt rawInst 0
       output' <- getSSAVarList func exprIndex' 1
@@ -1667,7 +1667,7 @@ create func exprIndex' = do
                 output = output',
                 core = coreInst
               }
-      return $ MediumLevelILMemoryIntrinsicOutputSsa rec
+      pure $ MediumLevelILMemoryIntrinsicOutputSsa rec
     MLIL_LOAD_SSA -> do
       src' <- getExpr func $ getOp rawInst 0
       srcMemory' <- getInt rawInst 1
@@ -1677,7 +1677,7 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Load $ MediumLevelILLoadSsa rec
+      pure $ Load $ MediumLevelILLoadSsa rec
     MLIL_LOAD_STRUCT_SSA -> do
       src' <- getExpr func $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -1689,7 +1689,7 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Load $ MediumLevelILLoadStructSsa rec
+      pure $ Load $ MediumLevelILLoadStructSsa rec
     MLIL_STORE_SSA -> do
       dest' <- getExpr func $ getOp rawInst 0
       destMemory' <- getInt rawInst 1
@@ -1703,7 +1703,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ Store $ MediumLevelILStoreSsa rec
+      pure $ Store $ MediumLevelILStoreSsa rec
     MLIL_STORE_STRUCT_SSA -> do
       dest' <- getExpr func $ getOp rawInst 0
       offset' <- getInt rawInst 1
@@ -1719,7 +1719,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ Store $ MediumLevelILStoreStructSsa rec
+      pure $ Store $ MediumLevelILStoreStructSsa rec
     MLIL_INTRINSIC_SSA -> do
       output' <- getSSAVarList func exprIndex' 0
       intrinsic' <- getIntrinsicIL rawInst func 2
@@ -1731,11 +1731,11 @@ create func exprIndex' = do
                 params = params',
                 core = coreInst
               }
-      return $ IntrinsicInstruction $ MediumLevelILIntrinsicSsa rec
+      pure $ IntrinsicInstruction $ MediumLevelILIntrinsicSsa rec
     MLIL_MEMORY_INTRINSIC_SSA -> do
       outputInst <- getExpr func $ getOp rawInst 0
       (output', outputDestMemory') <- case outputInst of
-        MediumLevelILMemoryIntrinsicOutputSsa (MediumLevelILMemoryIntrinsicOutputSsaRec {output = d, destMemory = dM}) -> return (d, dM)
+        MediumLevelILMemoryIntrinsicOutputSsa (MediumLevelILMemoryIntrinsicOutputSsaRec {output = d, destMemory = dM}) -> pure (d, dM)
         _ ->
           error $
             "create: Output of MediumLevelILMemoryIntrinsicOutputSsa: expected MediumLevelILMemoryIntrinsicOutputSsa : "
@@ -1752,7 +1752,7 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ IntrinsicInstruction $ MediumLevelILMemoryIntrinsicSsa rec
+      pure $ IntrinsicInstruction $ MediumLevelILMemoryIntrinsicSsa rec
     MLIL_FREE_VAR_SLOT_SSA -> do
       dest' <- getSSAVarAndDest rawInst 0 1
       prev' <- getSSAVarAndDest rawInst 0 2
@@ -1762,7 +1762,7 @@ create func exprIndex' = do
                 prev = prev',
                 core = coreInst
               }
-      return $ RegisterStack $ MediumLevelILFreeVarSlotSsa rec
+      pure $ RegisterStack $ MediumLevelILFreeVarSlotSsa rec
     MLIL_VAR_PHI -> do
       dest' <- getSSAVar rawInst 0 1
       src' <- getSSAVarList func exprIndex' 2
@@ -1772,7 +1772,7 @@ create func exprIndex' = do
                 src = src',
                 core = coreInst
               }
-      return $ SetVar $ MediumLevelILVarPhi rec
+      pure $ SetVar $ MediumLevelILVarPhi rec
     MLIL_MEM_PHI -> do
       destMemory' <- getInt rawInst 0
       srcMemory' <- getIntList func exprIndex' 1
@@ -1782,7 +1782,7 @@ create func exprIndex' = do
                 srcMemory = srcMemory',
                 core = coreInst
               }
-      return $ Memory $ MediumLevelILMemPhi rec
+      pure $ Memory $ MediumLevelILMemPhi rec
 
 children :: MediumLevelILSSAInstruction -> [MediumLevelILSSAInstruction]
 children (Localcall lc) =

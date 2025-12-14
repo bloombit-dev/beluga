@@ -333,16 +333,10 @@ getVersionString = do
   peekCString cStr
 
 foreign import ccall "BNSetLicense"
-  c_BNSetLicense :: CString -> IO ()
-
-setLicense :: String -> IO ()
-setLicense licenseData = withCString licenseData c_BNSetLicense
+  setLicense :: CString -> IO ()
 
 foreign import ccall "BNShutdown"
-  c_BNShutdown :: IO ()
-
-shutdown :: IO ()
-shutdown = c_BNShutdown
+  shutdown :: IO ()
 
 foreign import ccall "BNGetUniqueIdentifierString"
   c_BNGetUniqueIdentifierString :: IO CString
@@ -364,10 +358,7 @@ foreign import ccall "BNGetFileForView"
   c_BNGetFileForView :: BNBinaryViewPtr -> IO BNFileMetaDataPtr
 
 foreign import ccall "BNCloseFile"
-  c_BNCloseFile :: BNFileMetaDataPtr -> IO ()
+  closeFile :: BNFileMetaDataPtr -> IO ()
 
 getFileForView :: BNBinaryViewPtr -> IO BNFileMetaDataPtr
 getFileForView = c_BNGetFileForView
-
-closeFile :: BNFileMetaDataPtr -> IO ()
-closeFile = c_BNCloseFile

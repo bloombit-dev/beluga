@@ -16,12 +16,12 @@ import Binja.Utils
 ty :: BNSymbolPtr -> IO SymbolType
 ty sym = do
   symTy <- c_BNGetSymbolType sym
-  return $ toEnum $ fromIntegral symTy
+  pure $ toEnum $ fromIntegral symTy
 
 binding :: BNSymbolPtr -> IO SymbolBinding
 binding sym = do
   symBinding <- c_BNGetSymbolBinding sym
-  return $ toEnum $ fromIntegral symBinding
+  pure $ toEnum $ fromIntegral symBinding
 
 name :: BNSymbolPtr -> IO String
 name sym = do
@@ -68,7 +68,7 @@ create sym = do
   b <- Binja.Symbol.binding sym
   addr <- Binja.Symbol.address sym
   a <- Binja.Symbol.auto sym
-  return
+  pure
     Binja.Types.Symbol
       { name = nameStr,
         ty = t,

@@ -40,7 +40,7 @@ symbol :: BNFunctionPtr -> IO Symbol
 symbol func = do
   p <- c_BNGetFunctionSymbol func
   if p == nullPtr
-    then error "c_BNGetFunctionSymbol returned null"
+    then error "c_BNGetFunctionSymbol evaluated to null"
     else Binja.Symbol.create p
 
 auto :: BNFunctionPtr -> IO Bool
@@ -78,8 +78,8 @@ llil func = do
     else do
       llilFuncPtr <- c_BNGetFunctionLowLevelIL func
       if llilFuncPtr == nullPtr
-        then error "llil: c_BNGetFunctionLowLevelIL returned nullPtr"
-        else return llilFuncPtr
+        then error "llil: c_BNGetFunctionLowLevelIL evaluated to nullPtr"
+        else pure llilFuncPtr
 
 mlil :: BNFunctionPtr -> IO BNMlilFunctionPtr
 mlil func = do
@@ -90,15 +90,15 @@ mlil func = do
       if mlilFuncPtr == nullPtr
         then do
           Binja.Function.print func
-          error "mlil: c_BNGetFunctionMediumLevelIL returned nullPtr"
-        else return mlilFuncPtr
+          error "mlil: c_BNGetFunctionMediumLevelIL evaluated to nullPtr"
+        else pure mlilFuncPtr
 
 mlilToSSA :: BNMlilFunctionPtr -> IO BNMlilSSAFunctionPtr
 mlilToSSA func = do
   p <- c_BNGetMediumLevelILSSAForm func
   if p == nullPtr
-    then error "mlilToSSA: c_BNGetMediumLevelILSSAForm returned nullPtr"
-    else return p
+    then error "mlilToSSA: c_BNGetMediumLevelILSSAForm evaluated to nullPtr"
+    else pure p
 
 mlilSSA :: BNFunctionPtr -> IO BNMlilSSAFunctionPtr
 mlilSSA func = do
@@ -109,8 +109,8 @@ mlilToRawFunction :: BNMlilSSAFunctionPtr -> IO BNFunctionPtr
 mlilToRawFunction func = do
   rawFunc <- c_BNGetMediumLevelILOwnerFunction func
   if rawFunc == nullPtr
-    then error "mlilToRawFunction: BNGetMediumLevelILOwnerFunction returned null"
-    else return rawFunc
+    then error "mlilToRawFunction: BNGetMediumLevelILOwnerFunction evaluated to null"
+    else pure rawFunc
 
 print :: BNFunctionPtr -> IO ()
 print func = do

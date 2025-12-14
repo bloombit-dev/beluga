@@ -20,8 +20,8 @@ codeRefs view addr =
     arrPtr <- c_BNGetCodeReferences view addr countPtr (CBool 0) 0
     count <- fromIntegral <$> peek countPtr
     if arrPtr == nullPtr || count == 0
-      then return []
+      then pure []
       else do
         headPtr <- peekArray count (castPtr arrPtr :: Ptr BNReferenceSource)
         c_BNFreeCodeReferences arrPtr (fromIntegral count)
-        return headPtr
+        pure headPtr

@@ -353,8 +353,8 @@ getArch arch' = do
   cStr <- c_BNGetArchitectureName arch'
   str <- peekCString cStr
   case str of
-    "aarch64" -> return Arm64
-    "x86_64" -> return X86
+    "aarch64" -> pure Arm64
+    "x86_64" -> pure X86
     _ -> error $ "Unimplemented architecture: " ++ str
 
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
@@ -362,9 +362,9 @@ getIntrinsic arch' index' = do
   case arch' of
     Arm64 ->
       if index' < 54
-        then return $ IntrinsicArm64 (toEnum $ fromIntegral index' :: Arm64Intrinsic)
-        else return $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
-    X86 -> return $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
+        then pure $ IntrinsicArm64 (toEnum $ fromIntegral index' :: Arm64Intrinsic)
+        else pure $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
+    X86 -> pure $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
 
 data Architecture = Arm64 | X86
   deriving (Show)
@@ -399,7 +399,7 @@ instance Storable BNPossibleValueSet where
     valueSet <- peekByteOff ptr 40
     lookupTbl <- peekByteOff ptr 48
     count <- peekByteOff ptr 56
-    return (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count)
+    pure (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count)
   poke ptr (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count) = do
     pokeByteOff ptr 0 $ fromEnum rvt
     pokeByteOff ptr 8 val
@@ -433,7 +433,7 @@ instance Storable BNStringRef where
     t <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
     s <- peekByteOff ptr 8 :: IO Word64
     l <- peekByteOff ptr 16 :: IO CSize
-    return (BNStringRef t s l)
+    pure (BNStringRef t s l)
   poke ptr (BNStringRef t s l) = do
     pokeByteOff ptr 0 $ fromEnum t
     pokeByteOff ptr 8 s
@@ -453,7 +453,7 @@ instance Storable BNVariable where
     t <- peekByteOff ptr 0 :: IO Word32
     r <- peekByteOff ptr 4 :: IO Word32
     s <- peekByteOff ptr 8 :: IO Int64
-    return (BNVariable (toEnum $ fromIntegral t) r s)
+    pure (BNVariable (toEnum $ fromIntegral t) r s)
   poke ptr (BNVariable t r s) = do
     pokeByteOff ptr 0 $ fromEnum t
     pokeByteOff ptr 4 r
@@ -542,7 +542,7 @@ instance Storable BNLowLevelILInstruction where
     o2 <- peekByteOff ptr 40
     o3 <- peekByteOff ptr 48
     addr <- peekByteOff ptr 56
-    return (BNLowLevelILInstruction op attr sz flg srcOp o0 o1 o2 o3 addr)
+    pure (BNLowLevelILInstruction op attr sz flg srcOp o0 o1 o2 o3 addr)
   poke ptr (BNLowLevelILInstruction op attr sz flg srcOp o0 o1 o2 o3 addr) = do
     pokeByteOff ptr 0 op
     pokeByteOff ptr 4 attr
@@ -872,7 +872,7 @@ instance Storable BNMediumLevelILInstruction where
     o3 <- peekByteOff ptr 48 :: IO Word64
     o4 <- peekByteOff ptr 56 :: IO Word64
     addr <- peekByteOff ptr 64 :: IO Word64
-    return
+    pure
       ( BNMediumLevelILInstruction
           (toEnum $ fromIntegral op)
           attr
@@ -962,7 +962,7 @@ instance Storable BNReferenceSource where
     f <- peekByteOff ptr 0 :: IO BNFunctionPtr
     a <- peekByteOff ptr 8 :: IO BNArchPtr
     addr <- peekByteOff ptr 16 :: IO Word64
-    return $ BNReferenceSource f a addr
+    pure $ BNReferenceSource f a addr
   poke ptr (BNReferenceSource f a addr) = do
     pokeByteOff ptr 0 f
     pokeByteOff ptr 8 a

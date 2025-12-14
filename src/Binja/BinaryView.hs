@@ -58,7 +58,7 @@ load filename options = do
   viewPtr' <- loadFilename filename True options
   if viewPtr' == nullPtr
     then error $ "Failed to load binary view on file: " ++ filename
-    else return viewPtr'
+    else pure viewPtr'
 
 close :: BNBinaryViewPtr -> IO ()
 close view' = do
@@ -80,7 +80,7 @@ save :: BNBinaryViewPtr -> String -> IO Bool
 save view filename =
   withCString filename $ \cFilename -> do
     result <- c_BNSaveToFilename view cFilename
-    return (Binja.Utils.toBool result)
+    pure (Binja.Utils.toBool result)
 
 updateAnalysis :: BNBinaryViewPtr -> IO ()
 updateAnalysis = c_BNUpdateAnalysis
@@ -104,7 +104,7 @@ getFunctionList view =
     count <- fromIntegral <$> peek countPtr
     xs <-
       if rawPtr == nullPtr || count == 0
-        then return []
+        then pure []
         else peekArray count rawPtr
     arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr (fromIntegral count))
     pure
@@ -123,7 +123,7 @@ functionsByName view name' = do
   syms <- symbolsByName view name'
   let funcSyms = filter Binja.Symbol.isFunction syms
   xs <- mapM (functionsAt view . address) funcSyms
-  return $ concat xs
+  pure $ concat xs
 
 symbols :: BNBinaryViewPtr -> IO [Symbol]
 symbols view =
@@ -132,7 +132,7 @@ symbols view =
     count <- fromIntegral <$> peek countPtr
     xs <-
       if rawPtr == nullPtr || count == 0
-        then return []
+        then pure []
         else peekArray count rawPtr
     _ <- newForeignPtr rawPtr (c_BNFreeSymbolList rawPtr (fromIntegral count))
     mapM Binja.Symbol.create xs
@@ -140,7 +140,7 @@ symbols view =
 symbolsByName :: BNBinaryViewPtr -> String -> IO [Symbol]
 symbolsByName view name' = do
   syms <- symbols view
-  return $ filter (\s -> name s == name') syms
+  pure $ filter (\s -> name s == name') syms
 
 functionsContaining :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]
 functionsContaining view addr =
@@ -148,11 +148,11 @@ functionsContaining view addr =
     arrPtr <- c_BNGetAnalysisFunctionsContainingAddress view addr countPtr
     count <- peek countPtr
     if arrPtr == nullPtr || count == 0
-      then return []
+      then pure []
       else do
         refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNFunctionPtr)
         c_BNFreeFunctionList arrPtr count
-        return refs
+        pure refs
 
 functionsAt :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]
 functionsAt view addr =
@@ -160,11 +160,11 @@ functionsAt view addr =
     arrPtr <- c_BNGetAnalysisFunctionsForAddress view addr countPtr
     count <- peek countPtr
     if arrPtr == nullPtr || count == 0
-      then return []
+      then pure []
       else do
         refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNFunctionPtr)
         c_BNFreeFunctionList arrPtr count
-        return refs
+        pure refs
 
 strings :: BNBinaryViewPtr -> IO [Maybe String]
 strings view =
@@ -172,13 +172,13 @@ strings view =
     arrPtr <- c_BNGetStrings view countPtr
     count <- fromIntegral <$> peek countPtr
     if arrPtr == nullPtr || count == 0
-      then return []
+      then pure []
       else do
         refs <- peekArray count (castPtr arrPtr :: Ptr BNStringRef)
         c_BNFreeStringReferenceList arrPtr
         forM refs $ \(BNStringRef t s l) -> do
           mbs <- Binja.BinaryView.read view s l
-          return $ fmap (T.unpack . decodeByType t) mbs
+          pure $ fmap (T.unpack . decodeByType t) mbs
 
 decodeByType :: BNStringType -> BS.ByteString -> T.Text
 decodeByType ty' = go
@@ -208,15 +208,15 @@ read :: BNBinaryViewPtr -> Word64 -> CSize -> IO (Maybe BS.ByteString)
 read view addr len = do
   dataBuffer <- c_BNReadViewBuffer view addr len
   if dataBuffer == nullPtr
-    then return Nothing
+    then pure Nothing
     else do
       dataPtr <- c_BNGetDataBufferContents dataBuffer
       if dataPtr == nullPtr
-        then return Nothing
+        then pure Nothing
         else do
           bs <- BS.packCStringLen (dataPtr, fromIntegral len)
           c_BNFreeDataBuffer dataBuffer
-          return $ Just bs
+          pure $ Just bs
 
 symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Symbol)
 symbolAt view addr = do

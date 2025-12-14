@@ -14,7 +14,7 @@ Or pass stack the directory where libbinaryninjacore is located.
 Then build and exec the demo (after changing the path to your license and binary/bndb of interest) with stack.
 - stack init
 - stack build --extra-lib-dirs "$(pwd)"
-- stack run example --extra-lib-dirs "$(pwd)"
+- stack run example --extra-lib-dirs "$(pwd)" -- +RTS -N14 -sstats -RTS
 
 ## Branches
 Tested and implemented against an ultimate license install.

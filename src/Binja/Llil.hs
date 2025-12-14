@@ -27,7 +27,7 @@ startIndex func arch' addr = do
       -- in function
       if startI >= count
         then error ("startIndex: startI:" ++ show startI ++ " >= count:" ++ show count)
-        else return startI
+        else pure startI
 
 -- Convert an instruction index into an expression index
 instIndexToExprIndex :: BNLlilFunctionPtr -> Word64 -> IO CSize
