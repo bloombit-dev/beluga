@@ -1,0 +1,70 @@
+name: engine
+version: 0.1
+synopsis: Bindings for binaryninja api
+bug-reports: https://github.com/bloombit/engine/issues
+homepage: https://github.com/bloombit/engine
+category: FFI
+license: MIT
+author: bloombit
+maintainer: hello@bloombit.dev
+stability: alpha
+tested-with:
+  GHC==9.12
+
+description: Bindings for binaryninja api
+
+extra-source-files:
+- README.md
+dependencies:
+- base >= 4.7 && < 5
+- bytestring
+- base64-bytestring
+- text
+- containers >= 0.7
+- parallel
+- async
+library:
+  source-dirs: src
+  exposed-modules:
+    Binja.BinaryView
+    Binja.FFI
+    Binja.Llil
+    Binja.Mlil
+    Binja.Function
+    Binja.Plugin
+    Binja.ReferenceSource
+    Binja.Symbol
+    Binja.Types
+    Binja.Utils
+    Callgraph
+  other-modules: []
+  ghc-options:
+    - -Wall
+    - -threaded
+    - -rtsopts
+  ld-options:
+    - -Wl,-rpath,${pkgroot} # for macOS
+    - -Wl,-rpath,. # for macOS
+  c-sources:
+    - cbits/wrapper.c
+  include-dirs:
+    - cbits
+  extra-libraries:
+    - binaryninjacore
+
+executables:
+  example:
+    main: Main.hs
+    source-dirs: example
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+    ld-options:
+      - -Wl,-rpath,${pkgroot} # for macOS
+      - -Wl,-rpath,. # for macOS
+    extra-libraries:
+      - binaryninjacore
+    dependencies:
+      - engine
+
