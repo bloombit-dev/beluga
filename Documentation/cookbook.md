@@ -120,3 +120,28 @@ main = do
       Prelude.print $ show $ length refs'
   shutdown
 ```
+
+### Generate a callgraph for a binary view
+
+The following generates a callgraph without value analysis.
+Without value analysis calls to variables, struct fields, etc
+will not be considered.
+
+```haskell
+module Main where
+
+import Binja.BinaryView
+import Binja.FFI (shutdown)
+import Callgraph
+import Data.Map as Map
+
+main :: IO ()
+main = do
+  let options = "{ \"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0, "
+                ++ "\"analysis.limits.maxFunctionAnalysisTime\": 0 }"
+  view <- load "./test/macos/sudo" options
+  graph <- Callgraph.create view
+  Prelude.print $ "size: " ++ (show $ Map.size graph)
+  shutdown
+```
