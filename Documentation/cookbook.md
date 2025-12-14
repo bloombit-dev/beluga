@@ -129,7 +129,9 @@ will not be considered.
 
 Note that disabling analysis.limits.maxFunctionAnalysisTime by
 setting the limit to 0 is important otherwise callgraph creation
-can fail due to functions but being analyzed due to timeout.
+can fail due to functions not being analyzed due to timeout.
+In this case unanalyzed functions won't have mlil ssa instructions
+available for further analysis.
 
 Related reading:
 Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
