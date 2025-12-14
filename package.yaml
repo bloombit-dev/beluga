@@ -60,9 +60,6 @@ executables:
       - -Wall
       - -threaded
       - -rtsopts
-    ld-options:
-      - -Wl,-rpath,${pkgroot} # for macOS
-      - -Wl,-rpath,. # for macOS
     extra-libraries:
       - binaryninjacore
     dependencies:
