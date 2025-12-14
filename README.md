@@ -1,4 +1,4 @@
-# binaryninja-haskell
+# engine
 Haskell bindings for binary ninja with support for the medium level SSA intermediate language.
 
 ## Build Instructions
