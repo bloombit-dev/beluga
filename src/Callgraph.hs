@@ -10,6 +10,9 @@ module Callgraph
     Callgraph.filterWithKey,
     Callgraph.recursive,
     Callgraph.leaf,
+    Callgraph.callers,
+    Callgraph.callees,
+    Callgraph.mostConnected,
   )
 where
 
@@ -18,7 +21,7 @@ import Binja.Function
 import Binja.Mlil
 import Binja.Types
 -- import Control.Parallel.Strategies
-import Control.Concurrent.Async (mapConcurrently)
+-- import Control.Concurrent.Async (mapConcurrently)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -63,10 +66,36 @@ filter = Map.filter
 filterWithKey :: (Vertex -> Set.Set Vertex -> Bool) -> Graph -> Graph
 filterWithKey = Map.filterWithKey
 
--- Set of recursive symbols
+-- List of recursive symbols
 recursive :: Graph -> [Vertex]
 recursive graph = Callgraph.vertices $ Callgraph.filterWithKey (\parent child -> Set.member parent child) graph
 
--- Set of symbols with no
+-- List of symbols with no
 leaf :: Graph -> [Vertex]
 leaf graph = Callgraph.vertices $ Callgraph.filter Set.null graph
+
+-- List of symbols which call source symbol
+callers :: Graph -> Vertex -> [Vertex]
+callers graph source = Callgraph.vertices $ Callgraph.filter (Set.member source) graph
+
+-- List of symbols which source symbol calls
+callees :: Graph -> Vertex -> [Vertex]
+callees graph source =
+  maybe [] Set.toList $ Callgraph.neighbors graph source
+
+mostConnected :: Graph -> Vertex
+mostConnected graph = fst $ foldr step initialVertex $ Callgraph.vertices graph
+  where
+    initialVertex :: (Vertex, Int)
+    initialVertex = (head $ Map.keys graph, value $ head $ Map.keys graph)
+
+    value :: Vertex -> Int
+    value v =
+      length (callers graph v)
+        + length (callees graph v)
+
+    step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
+    step candidate (curVertex, curVal) =
+      if curVal < value candidate
+        then (candidate, value candidate)
+        else (curVertex, curVal)
