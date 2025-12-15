@@ -152,5 +152,7 @@ main = do
   view <- load "./test/macos/sudo" options
   graph <- Callgraph.create view
   Prelude.print $ "size: " ++ (show $ Map.size graph)
+  mapM_ Prelude.print $ Callgraph.leaf graph
+  mapM_ Prelude.print $ Callgraph.recursive graph
   shutdown
 ```
