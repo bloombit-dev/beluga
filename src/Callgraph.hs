@@ -83,12 +83,12 @@ callees :: Graph -> Vertex -> [Vertex]
 callees graph source =
   maybe [] Set.toList $ Callgraph.neighbors graph source
 
-mostConnected :: Graph -> Vertex
-mostConnected graph = fst $ foldr step initialVertex $ Callgraph.vertices graph
+mostConnected :: Graph -> Maybe Vertex
+mostConnected graph =
+  case Callgraph.vertices graph of
+    [] -> Nothing
+    v : vs -> Just $ fst $ foldr step (v, value v) vs
   where
-    initialVertex :: (Vertex, Int)
-    initialVertex = (head $ Map.keys graph, value $ head $ Map.keys graph)
-
     value :: Vertex -> Int
     value v =
       length (callers graph v)
