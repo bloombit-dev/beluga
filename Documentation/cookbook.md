@@ -10,7 +10,8 @@ import Binja.FFI (shutdown)
 main :: IO ()
 main = do
   let filename = "/Users/bloombit/projects/engine/FaceTime"
-  let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
+  let options = "{\"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   shutdown
 ```
@@ -26,7 +27,8 @@ import Binja.FFI (shutdown)
 main :: IO ()
 main = do
   let filename = "/Users/bloombit/projects/engine/FaceTime"
-  let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
+  let options = "{\"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   funcs <- Binja.BinaryView.functions view
   mapM_ Binja.Function.print funcs
@@ -62,7 +64,8 @@ import Binja.FFI (shutdown)
 
 main = do
   let filename = "/Users/bloombit/projects/engine/FaceTime"
-  let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
+  let options = "{\"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0}"
   view <- load filename options
   -- Get functions by name
   funcsByName <- Binja.BinaryView.functionsByName view "-[PhoneViewController _prepareForLoadView]"
@@ -88,7 +91,8 @@ import Binja.FFI (shutdown)
 main :: IO ()
 main = do
   let filename = "/Users/bloombit/projects/engine/FaceTime"
-  let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
+  let options = "{\"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0 }"
   view <- load filename options
   codeRefs' <- Binja.ReferenceSource.codeRefs view 4295938392
   Prelude.print $ "Found " ++ show (length codeRefs') ++ " codeRefs of address 4295938392"
@@ -108,7 +112,8 @@ import Binja.FFI (shutdown)
 
 main = do
   let filename = "/Users/bloombit/projects/engine/FaceTime"
-  let options = "{\"analysis.mode\": \"intermediate\", \"analysis.limits.maxFunctionSize\": 0}"
+  let options = "{\"analysis.mode\": \"intermediate\", "
+                ++ "\"analysis.limits.maxFunctionSize\": 0 }"
   view <- load filename options
   -- Get function by address
   iLFuncs <- Binja.BinaryView.functionsAt view 4295449218
@@ -121,17 +126,24 @@ main = do
   shutdown
 ```
 
-### Generate a callgraph for a binary view
+### Callgraph Analysis
 
 The following generates a callgraph without value analysis.
 Without value analysis calls to variables, struct fields, etc
-will not be considered.
+will not be considered currently.
 
-Note that disabling analysis.limits.maxFunctionAnalysisTime by
-setting the limit to 0 is important otherwise callgraph creation
-can fail due to functions not being analyzed due to timeout.
-In this case unanalyzed functions won't have mlil ssa instructions
-available for further analysis.
+The callgraph is an adjaceny list where a vertex is
+a Binja.Type.Symbol. Note that that a vertex isn't a function
+due to inclusion of other symbol types such as:
+  - symbolic function symbols present in ".synthetic_builtins" section.
+  - import address symbols 
+  - imported function symbol
+
+Note that disabling analysis.limits.maxFunctionAnalysisTime and
+analysis.limits.maxFunctionSize by setting the limit to 0 is important.
+Otherwise the callgraph creation can fail due to functions not being
+analyzed. In this case unanalyzed functions won't have mlil ssa
+instructions available for further analysis.
 
 Related reading:
 Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
@@ -152,5 +164,8 @@ main = do
   view <- load "./test/macos/sudo" options
   graph <- Callgraph.create view
   Prelude.print $ "size: " ++ (show $ Map.size graph)
+  mapM_ Prelude.print $ Callgraph.leaf graph
+  mapM_ Prelude.print $ Callgraph.recursive graph
+  Prelude.print $ Callgraph.mostConnected graph
   shutdown
 ```
