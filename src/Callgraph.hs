@@ -12,7 +12,9 @@ module Callgraph
     Callgraph.leaf,
     Callgraph.callers,
     Callgraph.callees,
+    Callgraph.mostCalled,
     Callgraph.mostConnected,
+    Callgraph.reachable,
   )
 where
 
@@ -20,8 +22,6 @@ import Binja.BinaryView
 import Binja.Function
 import Binja.Mlil
 import Binja.Types
--- import Control.Parallel.Strategies
--- import Control.Concurrent.Async (mapConcurrently)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -83,6 +83,21 @@ callees :: Graph -> Vertex -> [Vertex]
 callees graph source =
   maybe [] Set.toList $ Callgraph.neighbors graph source
 
+mostCalled :: Graph -> Maybe Vertex
+mostCalled graph =
+  case Callgraph.vertices graph of
+    [] -> Nothing
+    v : vs -> Just $ fst $ foldr step (v, value v) vs
+  where
+    value :: Vertex -> Int
+    value v = length (callers graph v)
+
+    step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
+    step candidate (curVertex, curVal) =
+      if curVal < value candidate
+        then (candidate, value candidate)
+        else (curVertex, curVal)
+
 mostConnected :: Graph -> Maybe Vertex
 mostConnected graph =
   case Callgraph.vertices graph of
@@ -99,3 +114,17 @@ mostConnected graph =
       if curVal < value candidate
         then (candidate, value candidate)
         else (curVertex, curVal)
+
+reachable :: Graph -> Vertex -> Vertex -> Bool
+reachable graph source destination = go Set.empty source
+  where
+    go :: Set.Set Vertex -> Vertex -> Bool
+    go visited v
+      | v == destination = True
+      | Set.member v visited = False
+      | otherwise =
+          case Callgraph.neighbors graph v of
+            Nothing -> False
+            Just ns ->
+              let visited' = Set.insert v visited
+               in any (go visited') (Set.toList ns)
