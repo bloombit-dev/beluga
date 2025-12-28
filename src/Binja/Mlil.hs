@@ -14,6 +14,7 @@ import Binja.BinaryView
 import Binja.FFI
 import Binja.Function
 import Binja.Llil
+import Binja.BasicBlock
 import Binja.ReferenceSource
 import Binja.Types
 
@@ -30,10 +31,6 @@ startIndex func arch' addr = do
         then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count
         else pure startI
 
--- Convert an instruction index into an expression index
-instIndexToExprIndex :: BNMlilFunctionPtr -> Word64 -> IO CSize
-instIndexToExprIndex = c_BNGetMediumLevelILIndexForInstruction
-
 mlilSSAByIndex :: BNMlilSSAFunctionPtr -> CSize -> IO BNMediumLevelILInstruction
 mlilSSAByIndex func index' = do
   alloca $ \p -> do
@@ -44,11 +41,11 @@ mlilSSAByIndex func index' = do
 fromRef :: BNReferenceSource -> IO MediumLevelILSSAInstruction
 fromRef ref = do
   -- Get mlil (non-ssa) expression index
-  func <- mlil (bnFunc ref)
+  func <- Binja.Function.mlil (bnFunc ref)
   sIndex <- Binja.Mlil.startIndex func (bnArch ref) (bnAddr ref)
-  exprIndex' <- instIndexToExprIndex func (fromIntegral sIndex)
+  exprIndex' <- c_BNGetMediumLevelILIndexForInstruction func (fromIntegral sIndex)
   -- Convert func and expression index to SSA
-  funcSSA <- mlilToSSA func
+  funcSSA <- Binja.Function.mlilToSSA func
   ssaExprIndex <- c_BNGetMediumLevelILSSAExprIndex func exprIndex'
   create funcSSA ssaExprIndex
 
@@ -186,33 +183,21 @@ getConstraint func inst operand = do
   where
     constraintIndex = getOp inst operand
 
-basicBlocks :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]
-basicBlocks func =
-  alloca $ \countPtr -> do
-    arrPtr <- c_BNGetMediumLevelILBasicBlockList func countPtr
-    count <- peek countPtr
-    if arrPtr == nullPtr || count == 0
-      then error "basicBlocks: arrPtr null or count is 0"
-      else do
-        refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNBasicBlockPtr)
-        c_BNFreeBasicBlockList arrPtr count
-        pure refs
-
 blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
 blockToInstructions block = do
   startExpr <- fromIntegral <$> c_BNGetBasicBlockStart block
   endExpr <- fromIntegral <$> c_BNGetBasicBlockEnd block
   func <- c_BNGetBasicBlockFunction block
-  mlilFunc <- mlil func
-  mlilSSAFunc <- mlilSSA func
-  exprs <- mapM (instIndexToExprIndex mlilFunc) [startExpr .. endExpr - 1]
+  mlilFunc <- Binja.Function.mlil func
+  mlilSSAFunc <- Binja.Function.mlilSSA func
+  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startExpr .. endExpr - 1]
   ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
   mapM (create mlilSSAFunc) ssaExprs
 
 -- All instructions in a specific function
 instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
-  blocks <- basicBlocks func
+  blocks <- Binja.BasicBlock.fromFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concatMap (\l -> l : children l) $ concat perBlock
 
@@ -274,12 +259,31 @@ extractCallDestSymbol view callInst =
     processDest dest' =
       case dest' of
         Constant c -> constantToSymbol view c
-        Load _ -> do
-          -- Prelude.print $ "Unhandled load instruction: " ++ show dest'
-          pure Nothing
-        VariableInstruction _ -> do
-          -- Prelude.print $ "Unhandled variable instruction: " ++ show dest'
-          pure Nothing
+        Load l -> do
+          case l of
+             (MediumLevelILLoad MediumLevelILLoadRec {src=s}) -> processDest s
+             (MediumLevelILLoadStruct MediumLevelILLoadStructRec {src=s}) -> processDest s
+             (MediumLevelILLoadSsa MediumLevelILLoadSsaRec {src=s}) -> processDest s
+             (MediumLevelILLoadStructSsa MediumLevelILLoadStructSsaRec {src=s}) -> processDest s
+        VariableInstruction v ->
+          case v of
+            (MediumLevelILVarSsa MediumLevelILVarSsaRec {src=s, core=c}) -> do
+              Prelude.print $ "MediumLevelILVarSsa src: " ++ show s ++ show c
+              pure Nothing
+            _ -> do
+              Prelude.print $ "Unhandled variable instruction: " ++ show dest'
+              pure Nothing
+        Arithmetic arith ->
+          case arith of
+            (MediumLevelILAdd (MediumLevelILAddRec {left = l, right=r})) -> do
+              --Prelude.print "======================"
+              --Prelude.print $ show l
+              --Prelude.print " + "
+              --Prelude.print $ show r
+              pure Nothing
+            _ -> do
+              Prelude.print $ "Unhanlded arith instruction: " ++ show dest'
+              pure Nothing
         _ -> error $ "Unhandled case: " ++ show dest'
 
 getOp :: BNMediumLevelILInstruction -> CSize -> CSize

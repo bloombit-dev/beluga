@@ -128,9 +128,7 @@ main = do
 
 ### Callgraph Analysis
 
-The following generates a callgraph without value analysis.
-Without value analysis calls to variables, struct fields, etc
-will not be considered currently.
+The following generates a callgraph with a "cocktail" of simple value analysis.
 
 The callgraph is an adjaceny list where a vertex is
 a Binja.Type.Symbol. Note that that a vertex isn't a function
@@ -149,6 +147,9 @@ Related reading:
 Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
 
 ```haskell
+
+
+
 module Main where
 
 import Binja.BinaryView
@@ -169,3 +170,4 @@ main = do
   Prelude.print $ Callgraph.mostConnected graph
   shutdown
 ```
+

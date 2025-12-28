@@ -104,6 +104,9 @@ foreign import ccall unsafe "BNFreeBasicBlockList"
   c_BNFreeBasicBlockList ::
     Ptr BNBasicBlockPtr -> CSize -> IO ()
 
+foreign import ccall "BNFreeBasicBlockEdgeList"
+  c_BNFreeBasicBlockEdgeList :: BNBasicBlockEdgePtr -> CSize -> IO ()
+
 foreign import ccall unsafe "BNGetBasicBlockStart"
   c_BNGetBasicBlockStart ::
     BNBasicBlockPtr -> IO CULLong
@@ -362,3 +365,9 @@ foreign import ccall "BNCloseFile"
 
 getFileForView :: BNBinaryViewPtr -> IO BNFileMetaDataPtr
 getFileForView = c_BNGetFileForView
+
+foreign import ccall "BNGetBasicBlockOutgoingEdges"
+  c_BNGetBasicBlockOutgoingEdges :: BNBasicBlockPtr -> Ptr CULLong -> IO BNBasicBlockEdgePtr
+
+foreign import ccall "BNGetBasicBlockIncomingEdges"
+  c_BNGetBasicBlockIncomingEdges :: BNBasicBlockPtr -> Ptr CULLong -> IO BNBasicBlockEdgePtr

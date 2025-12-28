@@ -56,6 +56,10 @@ module Binja.Types
     BNMlilSSAFunctionPtr,
     BNLlilFunctionPtr,
     BNBasicBlockPtr,
+    BNBasicBlockEdgePtr,
+    BNBasicBlockEdge,
+    BNBranchType,
+    --MediumLevelILBasicBlock (..),
     BNValueRangePtr,
     BNLookupTableEntryPtr,
     BNLowLevelILInstruction (..),
@@ -334,6 +338,8 @@ data BNBasicBlock_
 
 type BNBasicBlockPtr = Ptr BNBasicBlock_
 
+type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
+
 type TargetMap = [(CULLong, CULLong)]
 
 data ILIntrinsic = ILIntrinsic
@@ -365,6 +371,73 @@ getIntrinsic arch' index' = do
         then pure $ IntrinsicArm64 (toEnum $ fromIntegral index' :: Arm64Intrinsic)
         else pure $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
     X86 -> pure $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
+
+data BNBranchType
+  = UnconditionalBranch
+  | FalseBranch
+  | TrueBranch
+  | CallDestination
+  | FunctionReturn
+  | SystemCall
+  | IndirectBranch
+  | ExceptionBranch
+  | UnresolvedBranch
+  | UserDefinedBranch
+  deriving Show
+
+instance Enum BNBranchType where
+  fromEnum UnconditionalBranch = 0
+  fromEnum FalseBranch = 1
+  fromEnum TrueBranch = 2
+  fromEnum CallDestination = 3
+  fromEnum FunctionReturn = 4
+  fromEnum SystemCall = 5
+  fromEnum IndirectBranch = 6
+  fromEnum ExceptionBranch = 7
+  fromEnum UnresolvedBranch = 127
+  fromEnum UserDefinedBranch = 128
+
+  toEnum 0 = UnconditionalBranch
+  toEnum 1 = FalseBranch
+  toEnum 2 = TrueBranch
+  toEnum 3 = CallDestination
+  toEnum 4 = FunctionReturn
+  toEnum 5 = SystemCall
+  toEnum 6 = IndirectBranch
+  toEnum 7 = ExceptionBranch
+  toEnum 127 = UnresolvedBranch
+  toEnum 128 = UserDefinedBranch
+  toEnum n = error $ "BNRegisterValueType.toEnum: invalid tag " ++ show n
+
+data BNBasicBlockEdge = BNBasicBlockEdge
+  { ty :: !BNBranchType,
+    target :: !BNBasicBlockPtr,
+    backEdge :: !CBool,
+    fallThrough :: !CBool
+  }
+  deriving (Show)
+
+instance Storable BNBasicBlockEdge where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.alignmentS
+  peek ptr = do
+    ty' <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
+    target' <- peekByteOff ptr 8
+    backEdge' <- peekByteOff ptr 16
+    fallThrough' <- peekByteOff ptr 17
+    pure $ BNBasicBlockEdge ty' target' backEdge' fallThrough'
+  poke ptr (BNBasicBlockEdge ty' target' backEdge' fallThrough') = do
+    pokeByteOff ptr 0 $ fromEnum ty'
+    pokeByteOff ptr 8 target'
+    pokeByteOff ptr 16 backEdge'
+    pokeByteOff ptr 17 fallThrough'
+
+--data MediumLevelILBasicBlock = MediumLevelILBasicBlock
+--  { handle :: BNBasicBlockPtr,
+--    incomingEdges :: [BasicBlockEdge],
+--    outgoingEdges :: [BasicBlockEdge]
+--  }
+--  deriving (Show)
 
 data Architecture = Arm64 | X86
   deriving (Show)
@@ -398,9 +471,9 @@ instance Storable BNPossibleValueSet where
     ranges <- peekByteOff ptr 32
     valueSet <- peekByteOff ptr 40
     lookupTbl <- peekByteOff ptr 48
-    count <- peekByteOff ptr 56
-    pure (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count)
-  poke ptr (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count) = do
+    count' <- peekByteOff ptr 56
+    pure (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count')
+  poke ptr (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count') = do
     pokeByteOff ptr 0 $ fromEnum rvt
     pokeByteOff ptr 8 val
     pokeByteOff ptr 16 offset'
@@ -408,7 +481,7 @@ instance Storable BNPossibleValueSet where
     pokeByteOff ptr 32 ranges
     pokeByteOff ptr 40 valueSet
     pokeByteOff ptr 48 lookupTbl
-    pokeByteOff ptr 56 count
+    pokeByteOff ptr 56 count'
 
 data Function = Function
   { funcAdvancedAnalysisRequests :: !Int,
