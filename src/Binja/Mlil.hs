@@ -225,8 +225,6 @@ callerSites view func = do
     isLocalcall (Localcall _) = True
     isLocalcall _ = False
 
--- Conversion between non-ssa, ssa versions of instruction index and expression index
--- feels awkward: TODO: simplify this
 defSite :: MediumLevelILVarSsaRec -> IO MediumLevelILSSAInstruction
 defSite (MediumLevelILVarSsaRec {src=BNSSAVariable{var = bnVar, version = ver}, core=c}) =
   alloca $ \varPtr -> do
@@ -235,11 +233,8 @@ defSite (MediumLevelILVarSsaRec {src=BNSSAVariable{var = bnVar, version = ver}, 
                     (ilFunc c)
                     varPtr
                     (fromIntegral ver)
-    mlilFunction <- c_BNGetMediumLevelILNonSSAForm $ ilFunc c
-    instrNonSSAIndex <- c_BNGetMediumLevelILNonSSAInstructionIndex (ilFunc c) instrSSAIndex
-    exprIndex' <- c_BNGetMediumLevelILIndexForInstruction mlilFunction (fromIntegral instrNonSSAIndex)
-    exprSSAIndex <- c_BNGetMediumLevelILSSAExprIndex mlilFunction exprIndex'
-    create (ilFunc c) exprSSAIndex 
+    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction (ilFunc c) (fromIntegral instrSSAIndex)
+    create (ilFunc c) exprIndexSSA
 
 -- recover symbol from dest parameter of a local call instruction for call graph
 extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO (Maybe Symbol)
@@ -285,10 +280,7 @@ extractCallDestSymbol view callInst =
              (MediumLevelILLoadStructSsa MediumLevelILLoadStructSsaRec {src=s}) -> processDest s
         VariableInstruction v ->
           case v of
-            (MediumLevelILVarSsa rec) -> do
-              debug' <- defSite rec
-              -- TODO: process debug' to eval possible destinations
-              pure Nothing
+            (MediumLevelILVarSsa rec) -> defSite rec >>= processDest
             _ -> do
               Prelude.print $ "Unhandled variable instruction: " ++ show dest'
               pure Nothing
