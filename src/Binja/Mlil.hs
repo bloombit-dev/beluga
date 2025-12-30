@@ -284,6 +284,17 @@ extractCallDestSymbol view callInst =
             _ -> do
               Prelude.print $ "Unhandled variable instruction: " ++ show dest'
               pure Nothing
+        SetVar sv -> do
+          case sv of
+            (MediumLevelILSetVar MediumLevelILSetVarRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILVarPhi MediumLevelILVarPhiRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarSsa MediumLevelILSetVarSsaRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarAliased MediumLevelILSetVarAliasedRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarSsaField MediumLevelILSetVarSsaFieldRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarSplitSsa MediumLevelILSetVarSplitSsaRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarAliasedField MediumLevelILSetVarAliasedFieldRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarField MediumLevelILSetVarFieldRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILSetVarSplit MediumLevelILSetVarSplitRec {}) -> error $ "unimplemented" ++ show sv
         Arithmetic arith ->
           case arith of
             (MediumLevelILAdd (MediumLevelILAddRec {left = l, right=r})) -> do
