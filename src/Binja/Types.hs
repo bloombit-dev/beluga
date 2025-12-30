@@ -528,7 +528,7 @@ instance Storable BNVariable where
     s <- peekByteOff ptr 8 :: IO Int64
     pure (BNVariable (toEnum $ fromIntegral t) r s)
   poke ptr (BNVariable t r s) = do
-    pokeByteOff ptr 0 $ fromEnum t
+    pokeByteOff ptr 0 $ (fromIntegral (fromEnum t) :: Word32)
     pokeByteOff ptr 4 r
     pokeByteOff ptr 8 s
 

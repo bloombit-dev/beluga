@@ -3,6 +3,7 @@
 module Binja.Mlil
   ( Binja.Mlil.fromRef,
     Binja.Mlil.callerSites,
+    Binja.Mlil.defSite,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
     Binja.Mlil.instructionsFromFunc,
@@ -13,8 +14,8 @@ where
 import Binja.BinaryView
 import Binja.FFI
 import Binja.Function
-import Binja.Llil
 import Binja.BasicBlock
+import Binja.Llil
 import Binja.ReferenceSource
 import Binja.Types
 
@@ -31,6 +32,7 @@ startIndex func arch' addr = do
         then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count
         else pure startI
 
+-- Construct a raw mlil instruction from a ssa function and expression index
 mlilSSAByIndex :: BNMlilSSAFunctionPtr -> CSize -> IO BNMediumLevelILInstruction
 mlilSSAByIndex func index' = do
   alloca $ \p -> do
@@ -223,6 +225,22 @@ callerSites view func = do
     isLocalcall (Localcall _) = True
     isLocalcall _ = False
 
+-- Conversion between non-ssa, ssa versions of instruction index and expression index
+-- feels awkward: TODO: simplify this
+defSite :: MediumLevelILVarSsaRec -> IO MediumLevelILSSAInstruction
+defSite (MediumLevelILVarSsaRec {src=BNSSAVariable{var = bnVar, version = ver}, core=c}) =
+  alloca $ \varPtr -> do
+    poke varPtr $ bnVar
+    instrSSAIndex <- c_BNGetMediumLevelILSSAVarDefinition
+                    (ilFunc c)
+                    varPtr
+                    (fromIntegral ver)
+    mlilFunction <- c_BNGetMediumLevelILNonSSAForm $ ilFunc c
+    instrNonSSAIndex <- c_BNGetMediumLevelILNonSSAInstructionIndex (ilFunc c) instrSSAIndex
+    exprIndex <- c_BNGetMediumLevelILIndexForInstruction mlilFunction (fromIntegral instrNonSSAIndex)
+    exprSSAIndex <- c_BNGetMediumLevelILSSAExprIndex mlilFunction exprIndex 
+    create (ilFunc c) exprSSAIndex 
+
 -- recover symbol from dest parameter of a local call instruction for call graph
 extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO (Maybe Symbol)
 extractCallDestSymbol view callInst =
@@ -267,8 +285,9 @@ extractCallDestSymbol view callInst =
              (MediumLevelILLoadStructSsa MediumLevelILLoadStructSsaRec {src=s}) -> processDest s
         VariableInstruction v ->
           case v of
-            (MediumLevelILVarSsa MediumLevelILVarSsaRec {src=s, core=c}) -> do
-              Prelude.print $ "MediumLevelILVarSsa src: " ++ show s ++ show c
+            (MediumLevelILVarSsa rec) -> do
+              debug' <- defSite rec
+              -- TODO: process debug' to eval possible destinations
               pure Nothing
             _ -> do
               Prelude.print $ "Unhandled variable instruction: " ++ show dest'
@@ -276,10 +295,7 @@ extractCallDestSymbol view callInst =
         Arithmetic arith ->
           case arith of
             (MediumLevelILAdd (MediumLevelILAddRec {left = l, right=r})) -> do
-              --Prelude.print "======================"
-              --Prelude.print $ show l
-              --Prelude.print " + "
-              --Prelude.print $ show r
+              -- TODO: impl addition after VarSsa
               pure Nothing
             _ -> do
               Prelude.print $ "Unhanlded arith instruction: " ++ show dest'
@@ -296,6 +312,7 @@ getOp inst operand =
     4 -> mlOp4 inst
     _ -> error $ "getOp: " ++ show operand ++ " not in [0, .., 4]"
 
+-- Lift instruction in mlil ssa function context given an expression index
 create :: BNMlilSSAFunctionPtr -> CSize -> IO MediumLevelILSSAInstruction
 create func exprIndex' = do
   rawInst <- mlilSSAByIndex func exprIndex'
