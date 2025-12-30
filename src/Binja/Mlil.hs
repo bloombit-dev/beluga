@@ -237,8 +237,8 @@ defSite (MediumLevelILVarSsaRec {src=BNSSAVariable{var = bnVar, version = ver}, 
                     (fromIntegral ver)
     mlilFunction <- c_BNGetMediumLevelILNonSSAForm $ ilFunc c
     instrNonSSAIndex <- c_BNGetMediumLevelILNonSSAInstructionIndex (ilFunc c) instrSSAIndex
-    exprIndex <- c_BNGetMediumLevelILIndexForInstruction mlilFunction (fromIntegral instrNonSSAIndex)
-    exprSSAIndex <- c_BNGetMediumLevelILSSAExprIndex mlilFunction exprIndex 
+    exprIndex' <- c_BNGetMediumLevelILIndexForInstruction mlilFunction (fromIntegral instrNonSSAIndex)
+    exprSSAIndex <- c_BNGetMediumLevelILSSAExprIndex mlilFunction exprIndex'
     create (ilFunc c) exprSSAIndex 
 
 -- recover symbol from dest parameter of a local call instruction for call graph
