@@ -533,7 +533,7 @@ instance Storable BNVariable where
     pokeByteOff ptr 8 s
 
 data BNSSAVariable = BNSSAVariable
-  { var :: BNVariable,
+  { rawVar :: BNVariable,
     version :: Int
   }
   deriving (Eq, Show)

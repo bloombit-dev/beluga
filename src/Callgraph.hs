@@ -23,7 +23,6 @@ import Binja.Function
 import Binja.Mlil
 import Binja.Types
 import qualified Data.Map as Map
-import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 
 type Vertex = Binja.Types.Symbol
@@ -37,8 +36,9 @@ create view = do
   mlilInstructions <- mapM Binja.Mlil.instructionsFromFunc mlilFuncs
   let calls = map (Prelude.filter isCall) mlilInstructions
   children' <- mapM (mapM (Binja.Mlil.extractCallDestSymbol view)) calls
+  let childrenFlat = map concat children'
   parents <- mapM Binja.Function.symbol funcs
-  let graph' = Map.fromList $ zip parents $ map (Set.fromList . catMaybes) children'
+  let graph' = Map.fromList $ zip parents $ map (Set.fromList) childrenFlat
   pure $
     let allChildren = Set.unions (Map.elems graph')
      in Set.foldr

@@ -64,6 +64,10 @@ foreign import ccall unsafe "BNGetMediumLevelILInstructionCount"
   c_BNGetMediumLevelILInstructionCount ::
     BNMlilFunctionPtr -> IO CSize
 
+foreign import ccall unsafe "BNGetMediumLevelILInstructionCount"
+  c_BNGetMediumLevelILSSAInstructionCount ::
+    BNMlilSSAFunctionPtr -> IO CSize
+
 foreign import ccall unsafe "BNGetMediumLevelILIndexForInstruction"
   c_BNGetMediumLevelILIndexForInstruction ::
     BNMlilFunctionPtr -> Word64 -> IO CSize

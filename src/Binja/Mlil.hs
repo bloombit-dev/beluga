@@ -225,19 +225,24 @@ callerSites view func = do
     isLocalcall (Localcall _) = True
     isLocalcall _ = False
 
-defSite :: MediumLevelILVarSsaRec -> IO MediumLevelILSSAInstruction
-defSite (MediumLevelILVarSsaRec {src=BNSSAVariable{var = bnVar, version = ver}, core=c}) =
+defSite :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
+defSite ssaVar funcSSA =
   alloca $ \varPtr -> do
-    poke varPtr $ bnVar
+    poke varPtr $ rawVar ssaVar
     instrSSAIndex <- c_BNGetMediumLevelILSSAVarDefinition
-                    (ilFunc c)
+                    funcSSA
                     varPtr
-                    (fromIntegral ver)
-    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction (ilFunc c) (fromIntegral instrSSAIndex)
-    create (ilFunc c) exprIndexSSA
+                    (fromIntegral $ version ssaVar)
+    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
+    instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
+    -- Suppose SSA Variable is a function argument: the def site of a version 0 variable is not
+    -- well defined
+    if instCount >= exprIndexSSA
+      then pure Nothing
+      else Just <$> create funcSSA exprIndexSSA
 
--- recover symbol from dest parameter of a local call instruction for call graph
-extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO (Maybe Symbol)
+-- recover symbol from dest parameter of a call instruction
+extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO [Symbol]
 extractCallDestSymbol view callInst =
   case callInst of
     Localcall lc ->
@@ -268,10 +273,15 @@ extractCallDestSymbol view callInst =
     constantToSymbol view' (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
       Binja.BinaryView.symbolAt view' $ fromIntegral c
 
-    processDest :: MediumLevelILSSAInstruction -> IO (Maybe Symbol)
-    processDest dest' =
+    processDest :: MediumLevelILSSAInstruction -> IO [Symbol]
+    processDest dest' = do
+      Prelude.print $ show dest'
       case dest' of
-        Constant c -> constantToSymbol view c
+        Constant c -> do
+          constantDerived <- constantToSymbol view c
+          case constantDerived of
+            Nothing -> pure []
+            Just sym' -> pure [sym']
         Load l -> do
           case l of
              (MediumLevelILLoad MediumLevelILLoadRec {src=s}) -> processDest s
@@ -280,15 +290,20 @@ extractCallDestSymbol view callInst =
              (MediumLevelILLoadStructSsa MediumLevelILLoadStructSsaRec {src=s}) -> processDest s
         VariableInstruction v ->
           case v of
-            (MediumLevelILVarSsa rec) -> defSite rec >>= processDest
+            (MediumLevelILVarSsa MediumLevelILVarSsaRec {src=ssaVar, core=c}) -> do
+              def' <- defSite ssaVar (ilFunc c)
+              case def' of
+                Nothing -> pure []
+                Just site' -> processDest site'
             _ -> do
               Prelude.print $ "Unhandled variable instruction: " ++ show dest'
-              pure Nothing
+              pure []
         SetVar sv -> do
           case sv of
             (MediumLevelILSetVar MediumLevelILSetVarRec {}) -> error $ "unimplemented" ++ show sv
-            (MediumLevelILVarPhi MediumLevelILVarPhiRec {}) -> error $ "unimplemented" ++ show sv
-            (MediumLevelILSetVarSsa MediumLevelILSetVarSsaRec {}) -> error $ "unimplemented" ++ show sv
+            (MediumLevelILVarPhi MediumLevelILVarPhiRec {src=s, core=c}) ->
+              concat <$> mapM (\v' -> defSite v' (ilFunc c) >>= maybe (pure []) processDest) s
+            (MediumLevelILSetVarSsa MediumLevelILSetVarSsaRec {src=s}) -> processDest s
             (MediumLevelILSetVarAliased MediumLevelILSetVarAliasedRec {}) -> error $ "unimplemented" ++ show sv
             (MediumLevelILSetVarSsaField MediumLevelILSetVarSsaFieldRec {}) -> error $ "unimplemented" ++ show sv
             (MediumLevelILSetVarSplitSsa MediumLevelILSetVarSplitSsaRec {}) -> error $ "unimplemented" ++ show sv
@@ -299,10 +314,11 @@ extractCallDestSymbol view callInst =
           case arith of
             (MediumLevelILAdd (MediumLevelILAddRec {left = l, right=r})) -> do
               -- TODO: impl addition after VarSsa
-              pure Nothing
+              pure []
             _ -> do
               Prelude.print $ "Unhanlded arith instruction: " ++ show dest'
-              pure Nothing
+              pure []
+        Localcall _ -> pure []
         _ -> error $ "Unhandled case: " ++ show dest'
 
 getOp :: BNMediumLevelILInstruction -> CSize -> CSize
