@@ -125,8 +125,8 @@ getSSAVarList func expr operand =
 
 getSSAVar :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVar inst varOP version' = do
-  rawVar <- varFromID $ fromIntegral $ getOp inst varOP
-  pure $ BNSSAVariable rawVar $ fromIntegral $ getOp inst version'
+  rawVar' <- varFromID $ fromIntegral $ getOp inst varOP
+  pure $ BNSSAVariable rawVar' $ fromIntegral $ getOp inst version'
 
 getSSAVarAndDest :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVarAndDest = getSSAVar
@@ -236,8 +236,7 @@ defSite ssaVar funcSSA =
         (fromIntegral $ version ssaVar)
     exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
     instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
-    -- Suppose SSA Variable is a function argument: the def site of a version 0 variable is not
-    -- well defined
+    -- Example of this: ssa variable is version 0 coming from a function argument
     if instCount >= exprIndexSSA
       then pure Nothing
       else Just <$> create funcSSA exprIndexSSA
@@ -335,8 +334,8 @@ extractCallDestSymbol view callInst =
             -- on this case to resolve runtime symbols
             MediumLevelILAdd
               ( MediumLevelILAddRec
-                  { left = VariableInstruction (MediumLevelILVarSsa (MediumLevelILVarSsaRec {src = ssaVar, core = core'})),
-                    right = Constant c,
+                  { left = VariableInstruction (MediumLevelILVarSsa _),
+                    right = Constant _,
                     core = addCore
                   }
                 ) -> do
