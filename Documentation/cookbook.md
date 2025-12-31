@@ -130,6 +130,11 @@ main = do
 
 The following generates a callgraph with a "cocktail" of simple value analysis.
 
+The bulk of the cocktail of simple value analysis is defined in src/Binja/Mlil.hs:
+```haskell
+extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO [Symbol]
+```
+
 The callgraph is an adjaceny list where a vertex is
 a Binja.Type.Symbol. Note that that a vertex isn't a function
 due to inclusion of other symbol types such as:
@@ -147,8 +152,6 @@ Related reading:
 Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
 
 ```haskell
-
-
 
 module Main where
 
