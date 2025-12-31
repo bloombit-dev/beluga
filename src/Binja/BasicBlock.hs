@@ -1,12 +1,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Binja.BasicBlock
-  ( Binja.BasicBlock.fromFunction
+  ( Binja.BasicBlock.fromFunction,
   )
 where
 
-import Binja.Types
 import Binja.FFI
+import Binja.Types
 
 fromFunction :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]
 fromFunction func = do
@@ -19,5 +19,3 @@ fromFunction func = do
         refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNBasicBlockPtr)
         c_BNFreeBasicBlockList arrPtr count
         return refs
-
-

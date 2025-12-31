@@ -396,4 +396,3 @@ foreign import ccall "BNGetMediumLevelILSSAVarDefinition"
 
 foreign import ccall "BNGetMediumLevelILSSAVarUses"
   c_BNGetMediumLevelILSSAVarUses :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CULLong -> Ptr CULLong -> IO (Ptr CSize)
-

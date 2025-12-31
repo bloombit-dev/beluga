@@ -115,6 +115,7 @@ mostConnected graph =
         then (candidate, value candidate)
         else (curVertex, curVal)
 
+-- is destination node reachable in source
 reachable :: Graph -> Vertex -> Vertex -> Bool
 reachable graph source destination = go Set.empty source
   where

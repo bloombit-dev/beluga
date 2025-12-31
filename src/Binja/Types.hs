@@ -59,7 +59,7 @@ module Binja.Types
     BNBasicBlockEdgePtr,
     BNBasicBlockEdge,
     BNBranchType,
-    --MediumLevelILBasicBlock (..),
+    -- MediumLevelILBasicBlock (..),
     BNValueRangePtr,
     BNLookupTableEntryPtr,
     BNLowLevelILInstruction (..),
@@ -383,7 +383,7 @@ data BNBranchType
   | ExceptionBranch
   | UnresolvedBranch
   | UserDefinedBranch
-  deriving Show
+  deriving (Show)
 
 instance Enum BNBranchType where
   fromEnum UnconditionalBranch = 0
@@ -432,7 +432,7 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
 
---data MediumLevelILBasicBlock = MediumLevelILBasicBlock
+-- data MediumLevelILBasicBlock = MediumLevelILBasicBlock
 --  { handle :: BNBasicBlockPtr,
 --    incomingEdges :: [BasicBlockEdge],
 --    outgoingEdges :: [BasicBlockEdge]
