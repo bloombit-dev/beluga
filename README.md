@@ -1,5 +1,5 @@
-# engine
-Haskell bindings for binary ninja with support for the medium level SSA intermediate language.
+# beluga
+Program analysis and bindings in Haskell for binary ninja with support for the medium level SSA intermediate language.
 
 ## Build Instructions
 Symlink binary ninja core shared objects to package root.
