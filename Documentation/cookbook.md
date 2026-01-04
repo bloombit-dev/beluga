@@ -129,7 +129,7 @@ main = do
 ### Callgraph Construction
 
 The callgraph is an adjaceny list where a vertex is
-a Binja.Type.Symbol. Note that that a vertex isn't a function
+a Binja.Type.Symbol. Note that a vertex isn't a function
 due to inclusion of other symbol types such as:
   - symbolic function symbols present in ".synthetic_builtins" section.
   - import address symbols 
