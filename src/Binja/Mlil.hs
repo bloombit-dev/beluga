@@ -19,8 +19,6 @@ import Binja.Function
 import Binja.Llil
 import Binja.ReferenceSource
 import Binja.Types
-import Data.Maybe (catMaybes)
-import Data.Set as Set
 
 startIndex :: BNMlilFunctionPtr -> BNArchPtr -> Word64 -> IO CSize
 startIndex func arch' addr = do
