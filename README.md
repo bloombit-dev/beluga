@@ -1,4 +1,4 @@
-# beluga<img width="206" height="220" alt="Screenshot_2026-01-04_at_12 25 04_AM-removebg-preview" src="https://github.com/user-attachments/assets/88c1f6a6-4560-48be-bddc-969206510bb0" />
+# beluga<img width="153" height="160" alt="Screenshot_2026-01-04_at_12 25 04_AM-removebg-preview" src="https://github.com/user-attachments/assets/88c1f6a6-4560-48be-bddc-969206510bb0" />
 
 Program analysis and bindings in Haskell for binary ninja with support for the medium level SSA intermediate language.
 
