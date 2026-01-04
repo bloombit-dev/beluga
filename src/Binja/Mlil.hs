@@ -3,6 +3,8 @@
 module Binja.Mlil
   ( Binja.Mlil.fromRef,
     Binja.Mlil.callerSites,
+    Binja.Mlil.defSite,
+    Binja.Mlil.constantToSymbol,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
     Binja.Mlil.instructionsFromFunc,
@@ -10,6 +12,7 @@ module Binja.Mlil
   )
 where
 
+import Binja.BasicBlock
 import Binja.BinaryView
 import Binja.FFI
 import Binja.Function
@@ -30,10 +33,7 @@ startIndex func arch' addr = do
         then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count
         else pure startI
 
--- Convert an instruction index into an expression index
-instIndexToExprIndex :: BNMlilFunctionPtr -> Word64 -> IO CSize
-instIndexToExprIndex = c_BNGetMediumLevelILIndexForInstruction
-
+-- Construct a raw mlil instruction from a ssa function and expression index
 mlilSSAByIndex :: BNMlilSSAFunctionPtr -> CSize -> IO BNMediumLevelILInstruction
 mlilSSAByIndex func index' = do
   alloca $ \p -> do
@@ -44,11 +44,11 @@ mlilSSAByIndex func index' = do
 fromRef :: BNReferenceSource -> IO MediumLevelILSSAInstruction
 fromRef ref = do
   -- Get mlil (non-ssa) expression index
-  func <- mlil (bnFunc ref)
+  func <- Binja.Function.mlil (bnFunc ref)
   sIndex <- Binja.Mlil.startIndex func (bnArch ref) (bnAddr ref)
-  exprIndex' <- instIndexToExprIndex func (fromIntegral sIndex)
+  exprIndex' <- c_BNGetMediumLevelILIndexForInstruction func (fromIntegral sIndex)
   -- Convert func and expression index to SSA
-  funcSSA <- mlilToSSA func
+  funcSSA <- Binja.Function.mlilToSSA func
   ssaExprIndex <- c_BNGetMediumLevelILSSAExprIndex func exprIndex'
   create funcSSA ssaExprIndex
 
@@ -86,7 +86,7 @@ getIntList func expr operand =
         then pure []
         else peekArray count rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
-    pure $ map fromIntegral xs
+    pure $ Prelude.map fromIntegral xs
 
 varFromID :: CULLong -> IO BNVariable
 varFromID index' =
@@ -126,8 +126,8 @@ getSSAVarList func expr operand =
 
 getSSAVar :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVar inst varOP version' = do
-  rawVar <- varFromID $ fromIntegral $ getOp inst varOP
-  pure $ BNSSAVariable rawVar $ fromIntegral $ getOp inst version'
+  rawVar' <- varFromID $ fromIntegral $ getOp inst varOP
+  pure $ BNSSAVariable rawVar' $ fromIntegral $ getOp inst version'
 
 getSSAVarAndDest :: BNMediumLevelILInstruction -> CSize -> CSize -> IO BNSSAVariable
 getSSAVarAndDest = getSSAVar
@@ -186,33 +186,21 @@ getConstraint func inst operand = do
   where
     constraintIndex = getOp inst operand
 
-basicBlocks :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]
-basicBlocks func =
-  alloca $ \countPtr -> do
-    arrPtr <- c_BNGetMediumLevelILBasicBlockList func countPtr
-    count <- peek countPtr
-    if arrPtr == nullPtr || count == 0
-      then error "basicBlocks: arrPtr null or count is 0"
-      else do
-        refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNBasicBlockPtr)
-        c_BNFreeBasicBlockList arrPtr count
-        pure refs
-
 blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
 blockToInstructions block = do
   startExpr <- fromIntegral <$> c_BNGetBasicBlockStart block
   endExpr <- fromIntegral <$> c_BNGetBasicBlockEnd block
   func <- c_BNGetBasicBlockFunction block
-  mlilFunc <- mlil func
-  mlilSSAFunc <- mlilSSA func
-  exprs <- mapM (instIndexToExprIndex mlilFunc) [startExpr .. endExpr - 1]
+  mlilFunc <- Binja.Function.mlil func
+  mlilSSAFunc <- Binja.Function.mlilSSA func
+  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startExpr .. endExpr - 1]
   ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
   mapM (create mlilSSAFunc) ssaExprs
 
 -- All instructions in a specific function
 instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
-  blocks <- basicBlocks func
+  blocks <- Binja.BasicBlock.fromFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concatMap (\l -> l : children l) $ concat perBlock
 
@@ -232,13 +220,48 @@ callerSites view func = do
   -- lift via fromLlilRef
   refs' <- Binja.ReferenceSource.codeRefs view start'
   insts' <- mapM Binja.Mlil.fromLlilRef refs'
-  pure $ filter isLocalcall insts'
+  pure $ Prelude.filter isLocalcall insts'
   where
     isLocalcall :: MediumLevelILSSAInstruction -> Bool
     isLocalcall (Localcall _) = True
     isLocalcall _ = False
 
--- recover symbol from dest parameter of a local call instruction for call graph
+defSite :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
+defSite ssaVar funcSSA =
+  alloca $ \varPtr -> do
+    poke varPtr $ rawVar ssaVar
+    instrSSAIndex <-
+      c_BNGetMediumLevelILSSAVarDefinition
+        funcSSA
+        varPtr
+        (fromIntegral $ version ssaVar)
+    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
+    instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
+    -- Example of this: ssa variable is version 0 coming from a function argument
+    Prelude.print $ "instCount: " ++ show instCount
+    Prelude.print $ "exprIndexSSA: " ++ show exprIndexSSA
+    if instCount >= exprIndexSSA
+      then pure Nothing
+      else Just <$> create funcSSA exprIndexSSA
+
+-- Convert Constant instruction to symbol if possible
+constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
+constantToSymbol view' (MediumLevelILConstPtr (MediumLevelILConstPtrRec {constant = c})) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+constantToSymbol view' (MediumLevelILImport (MediumLevelILImportRec {constant = c})) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+constantToSymbol _ (MediumLevelILConst (MediumLevelILConstRec {constant = c})) = do
+  Prelude.print $ "Unhandled constant: " ++ show c
+  pure Nothing
+constantToSymbol _ (MediumLevelILFloatConst MediumLevelILFloatConstRec {constant = c}) = do
+  Prelude.print $ "Unhandled float constant: " ++ show c
+  pure Nothing
+constantToSymbol _ (MediumLevelILConstData MediumLevelILConstDataRec {constant = c}) = do
+  Prelude.print $ "Unhandled constant data: " ++ show c
+  pure Nothing
+constantToSymbol view' (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+
 extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO (Maybe Symbol)
 extractCallDestSymbol view callInst =
   case callInst of
@@ -256,31 +279,11 @@ extractCallDestSymbol view callInst =
         (MediumLevelILTailcallUntypedSsa MediumLevelILTailcallUntypedSsaRec {dest = d}) -> processDest d
     _ -> error $ "Binja.Mlil.extractCallDestSymbol: unhandled instruction: " ++ show callInst
   where
-    constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
-    constantToSymbol view' (MediumLevelILConstPtr (MediumLevelILConstPtrRec {constant = c})) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-    constantToSymbol view' (MediumLevelILImport (MediumLevelILImportRec {constant = c})) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-    constantToSymbol _ (MediumLevelILConst (MediumLevelILConstRec {constant = c})) = do
-      error $ "Unhandled constant: " ++ show c
-    constantToSymbol _ (MediumLevelILFloatConst MediumLevelILFloatConstRec {constant = c}) = do
-      error $ "Unhandled float constant: " ++ show c
-    constantToSymbol _ (MediumLevelILConstData MediumLevelILConstDataRec {constant = c}) = do
-      error $ "Unhandled constant data: " ++ show c
-    constantToSymbol view' (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-
     processDest :: MediumLevelILSSAInstruction -> IO (Maybe Symbol)
     processDest dest' =
       case dest' of
         Constant c -> constantToSymbol view c
-        Load _ -> do
-          -- Prelude.print $ "Unhandled load instruction: " ++ show dest'
-          pure Nothing
-        VariableInstruction _ -> do
-          -- Prelude.print $ "Unhandled variable instruction: " ++ show dest'
-          pure Nothing
-        _ -> error $ "Unhandled case: " ++ show dest'
+        _ -> pure Nothing
 
 getOp :: BNMediumLevelILInstruction -> CSize -> CSize
 getOp inst operand =
@@ -292,6 +295,7 @@ getOp inst operand =
     4 -> mlOp4 inst
     _ -> error $ "getOp: " ++ show operand ++ " not in [0, .., 4]"
 
+-- Lift instruction in mlil ssa function context given an expression index
 create :: BNMlilSSAFunctionPtr -> CSize -> IO MediumLevelILSSAInstruction
 create func exprIndex' = do
   rawInst <- mlilSSAByIndex func exprIndex'

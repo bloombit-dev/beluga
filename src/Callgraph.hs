@@ -15,6 +15,8 @@ module Callgraph
     Callgraph.mostCalled,
     Callgraph.mostConnected,
     Callgraph.reachable,
+    Callgraph.order,
+    Callgraph.size,
   )
 where
 
@@ -37,8 +39,9 @@ create view = do
   mlilInstructions <- mapM Binja.Mlil.instructionsFromFunc mlilFuncs
   let calls = map (Prelude.filter isCall) mlilInstructions
   children' <- mapM (mapM (Binja.Mlil.extractCallDestSymbol view)) calls
+  let childrenFlat = map catMaybes children'
   parents <- mapM Binja.Function.symbol funcs
-  let graph' = Map.fromList $ zip parents $ map (Set.fromList . catMaybes) children'
+  let graph' = Map.fromList $ zip parents $ map Set.fromList childrenFlat
   pure $
     let allChildren = Set.unions (Map.elems graph')
      in Set.foldr
@@ -115,6 +118,7 @@ mostConnected graph =
         then (candidate, value candidate)
         else (curVertex, curVal)
 
+-- is destination node reachable in source
 reachable :: Graph -> Vertex -> Vertex -> Bool
 reachable graph source destination = go Set.empty source
   where
@@ -128,3 +132,11 @@ reachable graph source destination = go Set.empty source
             Just ns ->
               let visited' = Set.insert v visited
                in any (go visited') (Set.toList ns)
+
+-- Number of nodes
+order :: Graph -> Int
+order = Map.size
+
+-- Numer of edges
+size :: Graph -> Int
+size = sum . map Set.size . Map.elems

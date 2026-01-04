@@ -64,9 +64,24 @@ foreign import ccall unsafe "BNGetMediumLevelILInstructionCount"
   c_BNGetMediumLevelILInstructionCount ::
     BNMlilFunctionPtr -> IO CSize
 
+foreign import ccall unsafe "BNGetMediumLevelILInstructionCount"
+  c_BNGetMediumLevelILSSAInstructionCount ::
+    BNMlilSSAFunctionPtr -> IO CSize
+
 foreign import ccall unsafe "BNGetMediumLevelILIndexForInstruction"
   c_BNGetMediumLevelILIndexForInstruction ::
     BNMlilFunctionPtr -> Word64 -> IO CSize
+
+foreign import ccall unsafe "BNGetMediumLevelILIndexForInstruction"
+  c_BNGetMediumLevelILSSAIndexForInstruction ::
+    BNMlilSSAFunctionPtr -> Word64 -> IO CSize
+
+foreign import ccall "BNGetMediumLevelILNonSSAInstructionIndex"
+  c_BNGetMediumLevelILNonSSAInstructionIndex :: BNMlilSSAFunctionPtr -> CSize -> IO CSize
+
+foreign import ccall unsafe "BNGetMediumLevelILSSAInstructionIndex"
+  c_BNGetMediumLevelILSSAInstructionIndex ::
+    BNMlilSSAFunctionPtr -> CSize -> IO CSize
 
 foreign import ccall unsafe "BNGetMediumLevelILByIndexPtr"
   c_BNGetMediumLevelILByIndexPtr ::
@@ -103,6 +118,9 @@ foreign import ccall unsafe "BNGetMediumLevelILBasicBlockList"
 foreign import ccall unsafe "BNFreeBasicBlockList"
   c_BNFreeBasicBlockList ::
     Ptr BNBasicBlockPtr -> CSize -> IO ()
+
+foreign import ccall "BNFreeBasicBlockEdgeList"
+  c_BNFreeBasicBlockEdgeList :: BNBasicBlockEdgePtr -> CSize -> IO ()
 
 foreign import ccall unsafe "BNGetBasicBlockStart"
   c_BNGetBasicBlockStart ::
@@ -292,6 +310,9 @@ foreign import ccall unsafe "BNGetFunctionMediumLevelIL"
 foreign import ccall unsafe "BNGetMediumLevelILSSAForm"
   c_BNGetMediumLevelILSSAForm :: BNMlilFunctionPtr -> IO BNMlilSSAFunctionPtr
 
+foreign import ccall unsafe "BNGetMediumLevelILNonSSAForm"
+  c_BNGetMediumLevelILNonSSAForm :: BNMlilSSAFunctionPtr -> IO BNMlilFunctionPtr
+
 foreign import ccall unsafe "BNGetMediumLevelILOwnerFunction"
   c_BNGetMediumLevelILOwnerFunction :: BNMlilSSAFunctionPtr -> IO BNFunctionPtr
 
@@ -362,3 +383,16 @@ foreign import ccall "BNCloseFile"
 
 getFileForView :: BNBinaryViewPtr -> IO BNFileMetaDataPtr
 getFileForView = c_BNGetFileForView
+
+foreign import ccall "BNGetBasicBlockOutgoingEdges"
+  c_BNGetBasicBlockOutgoingEdges :: BNBasicBlockPtr -> Ptr CULLong -> IO BNBasicBlockEdgePtr
+
+foreign import ccall "BNGetBasicBlockIncomingEdges"
+  c_BNGetBasicBlockIncomingEdges :: BNBasicBlockPtr -> Ptr CULLong -> IO BNBasicBlockEdgePtr
+
+-- Returns unique instruction index for SSA Mlil function context
+foreign import ccall "BNGetMediumLevelILSSAVarDefinition"
+  c_BNGetMediumLevelILSSAVarDefinition :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CSize -> IO CSize
+
+foreign import ccall "BNGetMediumLevelILSSAVarUses"
+  c_BNGetMediumLevelILSSAVarUses :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CULLong -> Ptr CULLong -> IO (Ptr CSize)

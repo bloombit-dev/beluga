@@ -146,35 +146,35 @@ functionsContaining :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]
 functionsContaining view addr =
   alloca $ \countPtr -> do
     arrPtr <- c_BNGetAnalysisFunctionsContainingAddress view addr countPtr
-    count <- peek countPtr
-    if arrPtr == nullPtr || count == 0
+    count' <- peek countPtr
+    if arrPtr == nullPtr || count' == 0
       then pure []
       else do
-        refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNFunctionPtr)
-        c_BNFreeFunctionList arrPtr count
+        refs <- peekArray (fromIntegral count') (castPtr arrPtr :: Ptr BNFunctionPtr)
+        c_BNFreeFunctionList arrPtr count'
         pure refs
 
 functionsAt :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]
 functionsAt view addr =
   alloca $ \countPtr -> do
     arrPtr <- c_BNGetAnalysisFunctionsForAddress view addr countPtr
-    count <- peek countPtr
-    if arrPtr == nullPtr || count == 0
+    count' <- peek countPtr
+    if arrPtr == nullPtr || count' == 0
       then pure []
       else do
-        refs <- peekArray (fromIntegral count) (castPtr arrPtr :: Ptr BNFunctionPtr)
-        c_BNFreeFunctionList arrPtr count
+        refs <- peekArray (fromIntegral count') (castPtr arrPtr :: Ptr BNFunctionPtr)
+        c_BNFreeFunctionList arrPtr count'
         pure refs
 
 strings :: BNBinaryViewPtr -> IO [Maybe String]
 strings view =
   alloca $ \countPtr -> do
     arrPtr <- c_BNGetStrings view countPtr
-    count <- fromIntegral <$> peek countPtr
-    if arrPtr == nullPtr || count == 0
+    count' <- fromIntegral <$> peek countPtr
+    if arrPtr == nullPtr || count' == 0
       then pure []
       else do
-        refs <- peekArray count (castPtr arrPtr :: Ptr BNStringRef)
+        refs <- peekArray count' (castPtr arrPtr :: Ptr BNStringRef)
         c_BNFreeStringReferenceList arrPtr
         forM refs $ \(BNStringRef t s l) -> do
           mbs <- Binja.BinaryView.read view s l

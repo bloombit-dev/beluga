@@ -126,11 +126,7 @@ main = do
   shutdown
 ```
 
-### Callgraph Analysis
-
-The following generates a callgraph without value analysis.
-Without value analysis calls to variables, struct fields, etc
-will not be considered currently.
+### Callgraph Construction
 
 The callgraph is an adjaceny list where a vertex is
 a Binja.Type.Symbol. Note that that a vertex isn't a function
@@ -139,16 +135,22 @@ due to inclusion of other symbol types such as:
   - import address symbols 
   - imported function symbol
 
-Note that disabling analysis.limits.maxFunctionAnalysisTime and
-analysis.limits.maxFunctionSize by setting the limit to 0 is important.
-Otherwise the callgraph creation can fail due to functions not being
-analyzed. In this case unanalyzed functions won't have mlil ssa
+Note that disabling:
+  - analysis.limits.maxFunctionAnalysisTime
+  - analysis.limits.maxFunctionSize
+by setting the limit to 0 is important.
+*Otherwise* the callgraph creation can *fail*
+due to functions not being analyzed.
+In this case unanalyzed functions won't have mlil ssa
 instructions available for further analysis.
 
-Related reading:
-Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
+Future work:
+    - Implement a "cocktail" of simple value analysis to improve callgraph construction.
+    - Related reading:
+        Yuandao Cai and Charles Zhang. 2023. A Cocktail Approach to Practical Call Graph Construction. Proc. ACM Program. Lang. 7, OOPSLA2, Article 257 (October 2023), 33 pages. https://doi.org/10.1145/3622833
 
 ```haskell
+
 module Main where
 
 import Binja.BinaryView
@@ -169,3 +171,4 @@ main = do
   Prelude.print $ Callgraph.mostConnected graph
   shutdown
 ```
+
