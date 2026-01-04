@@ -15,6 +15,8 @@ module Callgraph
     Callgraph.mostCalled,
     Callgraph.mostConnected,
     Callgraph.reachable,
+    Callgraph.order,
+    Callgraph.size,
   )
 where
 
@@ -23,6 +25,7 @@ import Binja.Function
 import Binja.Mlil
 import Binja.Types
 import qualified Data.Map as Map
+import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 
 type Vertex = Binja.Types.Symbol
@@ -36,9 +39,9 @@ create view = do
   mlilInstructions <- mapM Binja.Mlil.instructionsFromFunc mlilFuncs
   let calls = map (Prelude.filter isCall) mlilInstructions
   children' <- mapM (mapM (Binja.Mlil.extractCallDestSymbol view)) calls
-  let childrenFlat = map concat children'
+  let childrenFlat = map catMaybes children'
   parents <- mapM Binja.Function.symbol funcs
-  let graph' = Map.fromList $ zip parents $ map (Set.fromList) childrenFlat
+  let graph' = Map.fromList $ zip parents $ map Set.fromList childrenFlat
   pure $
     let allChildren = Set.unions (Map.elems graph')
      in Set.foldr
@@ -129,3 +132,11 @@ reachable graph source destination = go Set.empty source
             Just ns ->
               let visited' = Set.insert v visited
                in any (go visited') (Set.toList ns)
+
+-- Number of nodes
+order :: Graph -> Int
+order = Map.size
+
+-- Numer of edges
+size :: Graph -> Int
+size = sum . map Set.size . Map.elems

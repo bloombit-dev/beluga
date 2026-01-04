@@ -4,6 +4,7 @@ module Binja.Mlil
   ( Binja.Mlil.fromRef,
     Binja.Mlil.callerSites,
     Binja.Mlil.defSite,
+    Binja.Mlil.constantToSymbol,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
     Binja.Mlil.instructionsFromFunc,
@@ -18,6 +19,8 @@ import Binja.Function
 import Binja.Llil
 import Binja.ReferenceSource
 import Binja.Types
+import Data.Maybe (catMaybes)
+import Data.Set as Set
 
 startIndex :: BNMlilFunctionPtr -> BNArchPtr -> Word64 -> IO CSize
 startIndex func arch' addr = do
@@ -85,7 +88,7 @@ getIntList func expr operand =
         then pure []
         else peekArray count rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
-    pure $ map fromIntegral xs
+    pure $ Prelude.map fromIntegral xs
 
 varFromID :: CULLong -> IO BNVariable
 varFromID index' =
@@ -219,7 +222,7 @@ callerSites view func = do
   -- lift via fromLlilRef
   refs' <- Binja.ReferenceSource.codeRefs view start'
   insts' <- mapM Binja.Mlil.fromLlilRef refs'
-  pure $ filter isLocalcall insts'
+  pure $ Prelude.filter isLocalcall insts'
   where
     isLocalcall :: MediumLevelILSSAInstruction -> Bool
     isLocalcall (Localcall _) = True
@@ -237,12 +240,31 @@ defSite ssaVar funcSSA =
     exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
     instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
     -- Example of this: ssa variable is version 0 coming from a function argument
+    Prelude.print $ "instCount: " ++ show instCount
+    Prelude.print $ "exprIndexSSA: " ++ show exprIndexSSA
     if instCount >= exprIndexSSA
       then pure Nothing
       else Just <$> create funcSSA exprIndexSSA
 
--- recover symbol from dest parameter of a call instruction
-extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO [Symbol]
+-- Convert Constant instruction to symbol if possible
+constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
+constantToSymbol view' (MediumLevelILConstPtr (MediumLevelILConstPtrRec {constant = c})) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+constantToSymbol view' (MediumLevelILImport (MediumLevelILImportRec {constant = c})) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+constantToSymbol _ (MediumLevelILConst (MediumLevelILConstRec {constant = c})) = do
+  Prelude.print $ "Unhandled constant: " ++ show c
+  pure Nothing
+constantToSymbol _ (MediumLevelILFloatConst MediumLevelILFloatConstRec {constant = c}) = do
+  Prelude.print $ "Unhandled float constant: " ++ show c
+  pure Nothing
+constantToSymbol _ (MediumLevelILConstData MediumLevelILConstDataRec {constant = c}) = do
+  Prelude.print $ "Unhandled constant data: " ++ show c
+  pure Nothing
+constantToSymbol view' (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
+  Binja.BinaryView.symbolAt view' $ fromIntegral c
+
+extractCallDestSymbol :: BNBinaryViewPtr -> MediumLevelILSSAInstruction -> IO (Maybe Symbol)
 extractCallDestSymbol view callInst =
   case callInst of
     Localcall lc ->
@@ -257,97 +279,13 @@ extractCallDestSymbol view callInst =
         (MediumLevelILTailcall MediumLevelILTailcallRec {dest = d}) -> processDest d
         (MediumLevelILTailcallSsa MediumLevelILTailcallSsaRec {dest = d}) -> processDest d
         (MediumLevelILTailcallUntypedSsa MediumLevelILTailcallUntypedSsaRec {dest = d}) -> processDest d
-    _ -> do
-      Prelude.print $ "Binja.Mlil.extractCallDestSymbol: unhandled instruction: " ++ show callInst
-      pure []
+    _ -> error $ "Binja.Mlil.extractCallDestSymbol: unhandled instruction: " ++ show callInst
   where
-    constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
-    constantToSymbol view' (MediumLevelILConstPtr (MediumLevelILConstPtrRec {constant = c})) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-    constantToSymbol view' (MediumLevelILImport (MediumLevelILImportRec {constant = c})) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-    constantToSymbol _ (MediumLevelILConst (MediumLevelILConstRec {constant = c})) = do
-      Prelude.print $ "extractCallDestSymbol: Unhandled constant: " ++ show c
-      pure Nothing
-    constantToSymbol _ (MediumLevelILFloatConst MediumLevelILFloatConstRec {constant = c}) = do
-      Prelude.print $ "extractCallDestSymbol: Unhandled float constant: " ++ show c
-      pure Nothing
-    constantToSymbol _ (MediumLevelILConstData MediumLevelILConstDataRec {constant = c}) = do
-      Prelude.print $ "extractCallDestSymbol: Unhandled constant data: " ++ show c
-      pure Nothing
-    constantToSymbol view' (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
-      Binja.BinaryView.symbolAt view' $ fromIntegral c
-
-    processDest :: MediumLevelILSSAInstruction -> IO [Symbol]
-    processDest dest' = do
+    processDest :: MediumLevelILSSAInstruction -> IO (Maybe Symbol)
+    processDest dest' =
       case dest' of
-        Constant c -> do
-          constantDerived <- constantToSymbol view c
-          case constantDerived of
-            Nothing -> pure []
-            Just sym' -> pure [sym']
-        Load l -> do
-          case l of
-            (MediumLevelILLoad MediumLevelILLoadRec {src = s}) -> processDest s
-            (MediumLevelILLoadStruct MediumLevelILLoadStructRec {src = s}) -> processDest s
-            (MediumLevelILLoadSsa MediumLevelILLoadSsaRec {src = s}) -> processDest s
-            (MediumLevelILLoadStructSsa MediumLevelILLoadStructSsaRec {src = s}) -> processDest s
-        VariableInstruction v ->
-          case v of
-            (MediumLevelILVarSsa MediumLevelILVarSsaRec {src = ssaVar, core = c}) -> do
-              def' <- defSite ssaVar (ilFunc c)
-              case def' of
-                Nothing -> pure []
-                Just site' -> processDest site'
-            _ -> do
-              Prelude.print $ "extractCallDestSymbol: Unhandled variable instruction: " ++ show dest'
-              pure []
-        SetVar sv -> do
-          case sv of
-            (MediumLevelILSetVar MediumLevelILSetVarRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILVarPhi MediumLevelILVarPhiRec {src = s, core = c}) ->
-              concat <$> mapM (\v' -> defSite v' (ilFunc c) >>= maybe (pure []) processDest) s
-            (MediumLevelILSetVarSsa MediumLevelILSetVarSsaRec {src = s}) -> processDest s
-            (MediumLevelILSetVarAliased MediumLevelILSetVarAliasedRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILSetVarSsaField MediumLevelILSetVarSsaFieldRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILSetVarSplitSsa MediumLevelILSetVarSplitSsaRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILSetVarAliasedField MediumLevelILSetVarAliasedFieldRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILSetVarField MediumLevelILSetVarFieldRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-            (MediumLevelILSetVarSplit MediumLevelILSetVarSplitRec {}) -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show sv
-              pure []
-        Arithmetic arith ->
-          case arith of
-            -- TODO: Need auxiliary SSA Variable --> [Constant] mapping to perform arith
-            -- on this case to resolve runtime symbols
-            MediumLevelILAdd
-              ( MediumLevelILAddRec
-                  { left = VariableInstruction (MediumLevelILVarSsa _),
-                    right = Constant _,
-                    core = addCore
-                  }
-                ) -> do
-                Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show addCore
-                pure []
-            _ -> do
-              Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show dest'
-              pure []
-        Localcall _ -> pure []
-        _ -> do
-          Prelude.print $ "extractCallDestSymbol: unimplemented: " ++ show dest'
-          pure []
+        Constant c -> constantToSymbol view c
+        _ -> pure Nothing
 
 getOp :: BNMediumLevelILInstruction -> CSize -> CSize
 getOp inst operand =
