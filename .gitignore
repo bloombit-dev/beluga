@@ -21,7 +21,7 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
-engine.cabal
+beluga.cabal
 test
 *.dylib
 *.sh
