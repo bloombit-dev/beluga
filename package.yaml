@@ -1,8 +1,8 @@
-name: engine
+name: beluga
 version: 0.1
 synopsis: Bindings for binaryninja api
-bug-reports: https://github.com/bloombit/engine/issues
-homepage: https://github.com/bloombit/engine
+bug-reports: https://github.com/bloombit/beluga/issues
+homepage: https://github.com/bloombit/beluga
 category: FFI
 license: MIT
 author: bloombit
@@ -64,5 +64,5 @@ executables:
     extra-libraries:
       - binaryninjacore
     dependencies:
-      - engine
+      - beluga
 
