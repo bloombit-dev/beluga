@@ -138,6 +138,7 @@ due to inclusion of other symbol types such as:
 Note that disabling:
   - analysis.limits.maxFunctionAnalysisTime
   - analysis.limits.maxFunctionSize
+  
 by setting the limit to 0 is important.
 *Otherwise* the callgraph creation can *fail*
 due to functions not being analyzed.
