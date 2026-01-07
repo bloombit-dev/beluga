@@ -59,7 +59,6 @@ module Binja.Types
     BNBasicBlockEdgePtr,
     BNBasicBlockEdge,
     BNBranchType,
-    -- MediumLevelILBasicBlock (..),
     BNValueRangePtr,
     BNLookupTableEntryPtr,
     BNLowLevelILInstruction (..),
@@ -69,6 +68,8 @@ module Binja.Types
     BNPossibleValueSet (..),
     BNVariable (..),
     BNSSAVariable (..),
+    AnalysisContext (..),
+    FunctionContext (..),
     ILIntrinsic (..),
     TargetMap,
     Function (..),
@@ -342,6 +343,24 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
+data AnalysisContext = AnalysisContext
+  { viewHandle :: BNBinaryViewPtr,
+    functions :: [FunctionContext],
+    symbols :: [Symbol],
+    strings :: [String]
+  }
+  deriving (Show)
+
+data FunctionContext = FunctionContext
+  { handle :: BNMlilSSAFunctionPtr,
+    start :: Word64,
+    symbol :: Symbol,
+    auto :: Bool,
+    instructions :: [MediumLevelILSSAInstruction]
+    -- architecture :: ??
+  }
+  deriving (Show)
+
 data ILIntrinsic = ILIntrinsic
   { index :: !CSize,
     archHandle :: !BNArchPtr,
@@ -431,13 +450,6 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 8 target'
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
-
--- data MediumLevelILBasicBlock = MediumLevelILBasicBlock
---  { handle :: BNBasicBlockPtr,
---    incomingEdges :: [BasicBlockEdge],
---    outgoingEdges :: [BasicBlockEdge]
---  }
---  deriving (Show)
 
 data Architecture = Arm64 | X86
   deriving (Show, Eq, Ord)

@@ -8,6 +8,7 @@ module Binja.Mlil
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
     Binja.Mlil.instructionsFromFunc,
+    Binja.Mlil.instructionsFromFuncNoChildren,
     Binja.Mlil.children,
   )
 where
@@ -197,6 +198,12 @@ blockToInstructions block = do
   ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
   mapM (create mlilSSAFunc) ssaExprs
 
+instructionsFromFuncNoChildren :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
+instructionsFromFuncNoChildren func = do
+  blocks <- Binja.BasicBlock.fromFunction func
+  perBlock <- mapM blockToInstructions blocks
+  pure $ concat perBlock
+
 -- All instructions in a specific function
 instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
@@ -215,7 +222,7 @@ instructions view = do
 callerSites :: BNBinaryViewPtr -> BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
 callerSites view func = do
   rawFunc <- mlilToRawFunction func
-  start' <- start rawFunc
+  start' <- Binja.Function.start rawFunc
   -- These reference sources are llil.
   -- lift via fromLlilRef
   refs' <- Binja.ReferenceSource.codeRefs view start'

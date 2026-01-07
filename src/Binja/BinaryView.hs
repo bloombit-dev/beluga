@@ -1,21 +1,20 @@
 module Binja.BinaryView
-  ( load,
-    close,
-    save,
-    hasFunctions,
-    hasSymbols,
-    hasDataVariables,
-    updateAnalysis,
-    updateAnalysisAndWait,
-    abortAnalysis,
-    BNBinaryViewPtr,
-    functions,
-    functionsContaining,
-    functionsAt,
-    functionsByName,
-    symbols,
-    symbolsByName,
-    strings,
+  ( Binja.BinaryView.load,
+    Binja.BinaryView.close,
+    Binja.BinaryView.save,
+    Binja.BinaryView.hasFunctions,
+    Binja.BinaryView.hasSymbols,
+    Binja.BinaryView.hasDataVariables,
+    Binja.BinaryView.updateAnalysis,
+    Binja.BinaryView.updateAnalysisAndWait,
+    Binja.BinaryView.abortAnalysis,
+    Binja.BinaryView.functions,
+    Binja.BinaryView.functionsContaining,
+    Binja.BinaryView.functionsAt,
+    Binja.BinaryView.functionsByName,
+    Binja.BinaryView.symbols,
+    Binja.BinaryView.symbolsByName,
+    Binja.BinaryView.strings,
     Binja.BinaryView.read,
     Binja.BinaryView.symbolAt,
   )
@@ -139,7 +138,7 @@ symbols view =
 
 symbolsByName :: BNBinaryViewPtr -> String -> IO [Symbol]
 symbolsByName view name' = do
-  syms <- symbols view
+  syms <- Binja.BinaryView.symbols view
   pure $ filter (\s -> name s == name') syms
 
 functionsContaining :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]

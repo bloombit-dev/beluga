@@ -1,6 +1,5 @@
 module Binja.Function
-  ( Function,
-    Binja.Function.start,
+  ( Binja.Function.start,
     Binja.Function.highestAddress,
     Binja.Function.lowestAddress,
     Binja.Function.symbol,
@@ -23,7 +22,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types
+import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, Symbol, Word64, newCString, nullPtr, peekCString)
 import Binja.Utils
 import Control.Monad (unless)
 
