@@ -39,7 +39,6 @@ library:
     Binja.Types
     Binja.Utils
     Callgraph
-    DependenceGraph
   other-modules: []
   ghc-options:
     - -Wall

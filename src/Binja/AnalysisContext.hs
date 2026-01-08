@@ -2,6 +2,7 @@
 
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
+    Binja.AnalysisContext.close,
   )
 where
 
@@ -27,13 +28,14 @@ create filename options = do
       }
 
 createFunctionContext :: BNFunctionPtr -> IO FunctionContext
-createFunctionContext handle = do
-  mlilSSAHandle <- Binja.Function.mlilSSA handle
-  mlilHandle <- Binja.Function.mlil handle
-  start' <- Binja.Function.start handle
-  symbol' <- Binja.Function.symbol handle
-  auto' <- Binja.Function.auto handle
+createFunctionContext handle' = do
+  mlilSSAHandle <- Binja.Function.mlilSSA handle'
+  mlilHandle <- Binja.Function.mlil handle'
+  start' <- Binja.Function.start handle'
+  symbol' <- Binja.Function.symbol handle'
+  auto' <- Binja.Function.auto handle'
   instructions' <- Binja.Mlil.instructionsFromFuncNoChildren mlilHandle
+  -- scan for variables
   pure
     FunctionContext
       { handle = mlilSSAHandle,
@@ -42,3 +44,6 @@ createFunctionContext handle = do
         auto = auto',
         instructions = instructions'
       }
+
+close :: AnalysisContext -> IO ()
+close = Binja.BinaryView.close . viewHandle
