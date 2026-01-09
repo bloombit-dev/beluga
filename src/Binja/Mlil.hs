@@ -244,10 +244,7 @@ defSite ssaVar funcSSA =
         (fromIntegral $ version ssaVar)
     exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
     instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
-    -- Example of this: ssa variable is version 0 coming from a function argument
-    Prelude.print $ "instCount: " ++ show instCount
-    Prelude.print $ "exprIndexSSA: " ++ show exprIndexSSA
-    if instCount >= exprIndexSSA
+    if instrSSAIndex >= instCount
       then pure Nothing
       else Just <$> create funcSSA exprIndexSSA
 

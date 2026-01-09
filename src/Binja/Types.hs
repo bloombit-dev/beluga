@@ -365,7 +365,7 @@ data FunctionContext = FunctionContext
   deriving (Show)
 
 data SSAVariableContext = SSAVariableContext
-  { defSite :: MediumLevelILSSAInstruction,
+  { defSite :: Maybe MediumLevelILSSAInstruction,
     useSites :: [MediumLevelILSSAInstruction]
   }
   deriving (Show)
@@ -488,17 +488,17 @@ instance Storable BNPossibleValueSet where
     rvt <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
     val <- peekByteOff ptr 8
     offset' <- peekByteOff ptr 16
-    size <- peekByteOff ptr 24
+    size' <- peekByteOff ptr 24
     ranges <- peekByteOff ptr 32
     valueSet <- peekByteOff ptr 40
     lookupTbl <- peekByteOff ptr 48
     count' <- peekByteOff ptr 56
-    pure (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count')
-  poke ptr (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count') = do
+    pure (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count')
+  poke ptr (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count') = do
     pokeByteOff ptr 0 $ fromEnum rvt
     pokeByteOff ptr 8 val
     pokeByteOff ptr 16 offset'
-    pokeByteOff ptr 24 size
+    pokeByteOff ptr 24 size'
     pokeByteOff ptr 32 ranges
     pokeByteOff ptr 40 valueSet
     pokeByteOff ptr 48 lookupTbl

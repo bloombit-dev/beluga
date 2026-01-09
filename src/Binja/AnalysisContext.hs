@@ -58,15 +58,7 @@ createFunctionContext handle' = do
 createSSAVariableContext :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (BNSSAVariable, SSAVariableContext)
 createSSAVariableContext var' func = do
   defSite' <- Binja.Mlil.defSite var' func
-  case defSite' of
-    Nothing -> do
-      rawHandle <- Binja.Function.mlilToRawFunction func
-      Binja.Function.print rawHandle
-      error $
-        "Binja.AnalysisContext.createSSAVariableContext: defSite returned Nothing for variable: "
-          ++ show var'
-    Just justDef ->
-      pure $ (var', SSAVariableContext {defSite = justDef, useSites = []})
+  pure $ (var', SSAVariableContext {defSite = defSite', useSites = []})
 
 close :: AnalysisContext -> IO ()
 close = Binja.BinaryView.close . viewHandle
