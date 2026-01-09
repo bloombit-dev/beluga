@@ -38,11 +38,9 @@ createFunctionContext handle' = do
   instructions' <- Binja.Mlil.instructionsFromFuncNoChildren mlilHandle
   ssaVariables' <- Binja.Function.ssaVars mlilSSAHandle
   ssaVarContext' <- Map.fromList <$> mapM (\l -> createSSAVariableContext l mlilSSAHandle) ssaVariables'
-  -- TODO (1) derive ssa context for each ssa variable (fill in use sites for each).
-  --      (2) obtain more variables like aliased variables and parameter variables.
+  -- TODO (1) obtain more variables like aliased variables and parameter variables.
   --          the union of aliased variables, parameter variables and ssa variables
   --          are all variables for function.
-  --          Map.Map BNSSAVariable SSAVariableContext
   pure
     FunctionContext
       { handle = mlilSSAHandle,
@@ -58,7 +56,8 @@ createFunctionContext handle' = do
 createSSAVariableContext :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (BNSSAVariable, SSAVariableContext)
 createSSAVariableContext var' func = do
   defSite' <- Binja.Mlil.defSite var' func
-  pure $ (var', SSAVariableContext {defSite = defSite', useSites = []})
+  useSites' <- Binja.Mlil.useSites var' func
+  pure $ (var', SSAVariableContext {defSite = defSite', useSites = useSites'})
 
 close :: AnalysisContext -> IO ()
 close = Binja.BinaryView.close . viewHandle

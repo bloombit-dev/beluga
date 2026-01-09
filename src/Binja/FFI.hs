@@ -394,6 +394,7 @@ foreign import ccall "BNGetBasicBlockIncomingEdges"
 foreign import ccall "BNGetMediumLevelILSSAVarDefinition"
   c_BNGetMediumLevelILSSAVarDefinition :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CSize -> IO CSize
 
+-- returns list of instruction index
 foreign import ccall "BNGetMediumLevelILSSAVarUses"
   c_BNGetMediumLevelILSSAVarUses :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CULLong -> Ptr CULLong -> IO (Ptr CSize)
 

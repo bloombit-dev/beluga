@@ -4,6 +4,7 @@ module Binja.Mlil
   ( Binja.Mlil.fromRef,
     Binja.Mlil.callerSites,
     Binja.Mlil.defSite,
+    Binja.Mlil.useSites,
     Binja.Mlil.constantToSymbol,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
@@ -20,6 +21,8 @@ import Binja.Function
 import Binja.Llil
 import Binja.ReferenceSource
 import Binja.Types
+import Control.Monad (zipWithM)
+import Data.Maybe (catMaybes)
 
 startIndex :: BNMlilFunctionPtr -> BNArchPtr -> Word64 -> IO CSize
 startIndex func arch' addr = do
@@ -247,6 +250,41 @@ defSite ssaVar funcSSA =
     if instrSSAIndex >= instCount
       then pure Nothing
       else Just <$> create funcSSA exprIndexSSA
+
+useSites :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
+useSites ssaVar funcSSA =
+  alloca $ \countPtr -> do
+    alloca $ \varPtr -> do
+      poke varPtr $ rawVar ssaVar
+      rawResult <-
+        c_BNGetMediumLevelILSSAVarUses
+          funcSSA
+          varPtr
+          (fromIntegral $ version ssaVar)
+          countPtr
+      count <- fromIntegral <$> peek countPtr :: IO Int
+      result <-
+        if rawResult == nullPtr || count == 0
+          then pure []
+          else peekArray count rawResult
+      exprIndexSSAList <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction funcSSA . fromIntegral) result
+      instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
+      useSites' <-
+        catMaybes
+          <$> zipWithM
+            ( \instrIndex exprIndex ->
+                createMaybe instCount instrIndex exprIndex funcSSA
+            )
+            result
+            exprIndexSSAList
+      when (rawResult /= nullPtr) $ c_BNFreeILInstructionList rawResult
+      pure useSites'
+  where
+    createMaybe :: CSize -> CSize -> CSize -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
+    createMaybe instCount instrIndex exprIndex funcSSA =
+      if instrIndex >= instCount
+        then pure Nothing
+        else Just <$> create funcSSA exprIndex
 
 -- Convert Constant instruction to symbol if possible
 constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
