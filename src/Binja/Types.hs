@@ -250,6 +250,7 @@ import Control.Exception (finally)
 import Control.Monad (forM, when)
 import Data.Bits ((.&.))
 import Data.Int (Int64)
+import Data.Map as Map
 import Data.Word (Word32, Word64, Word8)
 import Foreign
   ( Storable (alignment, peek, peekByteOff, poke, pokeByteOff, sizeOf),
@@ -357,9 +358,8 @@ data FunctionContext = FunctionContext
     start :: Word64,
     symbol :: Symbol,
     auto :: Bool,
-    ssaVars :: [BNSSAVariable],
-    instructions :: [MediumLevelILSSAInstruction]
-    -- vars :: Map.Map SSAVariable SSAVariableContext
+    instructions :: [MediumLevelILSSAInstruction],
+    ssaVars :: Map.Map BNSSAVariable SSAVariableContext
     -- architecture :: ??
   }
   deriving (Show)
