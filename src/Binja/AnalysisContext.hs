@@ -35,13 +35,14 @@ createFunctionContext handle' = do
   symbol' <- Binja.Function.symbol handle'
   auto' <- Binja.Function.auto handle'
   instructions' <- Binja.Mlil.instructionsFromFuncNoChildren mlilHandle
-  -- scan for variables
+  ssaVariables' <- Binja.Function.ssaVars mlilSSAHandle
   pure
     FunctionContext
       { handle = mlilSSAHandle,
         start = start',
         symbol = symbol',
         auto = auto',
+        ssaVars = ssaVariables',
         instructions = instructions'
       }
 

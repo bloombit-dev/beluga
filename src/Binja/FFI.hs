@@ -397,10 +397,14 @@ foreign import ccall "BNGetMediumLevelILSSAVarDefinition"
 foreign import ccall "BNGetMediumLevelILSSAVarUses"
   c_BNGetMediumLevelILSSAVarUses :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CULLong -> Ptr CULLong -> IO (Ptr CSize)
 
--- BINARYNINJACOREAPI BNVariableNameAndType* BNGetFunctionVariables(BNFunction* func, size_t* count);
-foreign import ccall "BNGetFunctionVariables"
-  c_BNGetFunctionVariables :: BNMlilFunctionPtr -> Ptr CSize -> IO (Ptr BNVariableNameAndType)
+foreign import ccall "BNGetMediumLevelILVariables"
+  c_BNGetMediumLevelILVariables :: BNMlilSSAFunctionPtr -> Ptr CSize -> IO (Ptr BNVariable)
 
--- 	BINARYNINJACOREAPI void BNFreeVariableNameAndTypeList(BNVariableNameAndType* vars, size_t count);
-foreign import ccall "BNFreeVariableNameAndTypeList"
-  c_BNFreeVariableNameAndTypeList :: Ptr BNVariableNameAndType -> CSize -> IO ()
+foreign import ccall "BNFreeVariableList"
+  c_BNFreeVariableList :: Ptr BNVariable -> IO ()
+
+foreign import ccall "BNGetMediumLevelILVariableSSAVersions"
+  c_BNGetMediumLevelILVariableSSAVersions :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> Ptr CSize -> IO (Ptr CSize)
+
+foreign import ccall "BNFreeILInstructionList"
+  c_BNFreeILInstructionList :: Ptr CSize -> IO ()

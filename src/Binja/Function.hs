@@ -11,6 +11,7 @@ module Binja.Function
     Binja.Function.hasUnresolvedIndirectBranches,
     Binja.Function.getComment,
     Binja.Function.setComment,
+    Binja.Function.ssaVars,
     Binja.Function.llil,
     Binja.Function.mlil,
     Binja.Function.mlilToSSA,
@@ -22,7 +23,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, Symbol, Word64, newCString, nullPtr, peekCString)
+import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNSSAVariable (..), BNVariable, CSize, Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, poke, rawVar, version, when)
 import Binja.Utils
 import Control.Monad (unless)
 
@@ -69,6 +70,33 @@ setComment :: BNFunctionPtr -> String -> IO ()
 setComment func comment = do
   cStr <- newCString comment
   c_BNSetFunctionComment func cStr
+
+ssaVars :: BNMlilSSAFunctionPtr -> IO [BNSSAVariable]
+ssaVars func = do
+  alloca $ \countVarPtr -> do
+    rawVarPtr <- c_BNGetMediumLevelILVariables func countVarPtr
+    countVar <- fromIntegral <$> peek countVarPtr
+    rawVarList <-
+      if rawVarPtr == nullPtr || countVar == 0
+        then pure []
+        else peekArray countVar rawVarPtr
+    alloca $ \countVersionPtr -> do
+      rawVersionPtr <- c_BNGetMediumLevelILVariableSSAVersions func rawVarPtr countVersionPtr
+      countVersion <- fromIntegral <$> peek countVersionPtr
+      rawVersionList <-
+        if rawVersionPtr == nullPtr
+          then pure []
+          else peekArray countVersion rawVersionPtr
+      when (rawVarPtr /= nullPtr) $ c_BNFreeVariableList rawVarPtr
+      when (rawVersionPtr /= nullPtr) $ c_BNFreeILInstructionList rawVersionPtr
+      pure $ zipWith createSSAVar rawVarList rawVersionList
+  where
+    createSSAVar :: BNVariable -> CSize -> BNSSAVariable
+    createSSAVar var ver =
+      BNSSAVariable
+        { rawVar = var,
+          version = fromIntegral ver
+        }
 
 llil :: BNFunctionPtr -> IO BNLlilFunctionPtr
 llil func = do

@@ -61,7 +61,6 @@ module Binja.Types
     BNBranchType,
     BNValueRangePtr,
     BNLookupTableEntryPtr,
-    BNTypePtr,
     BNLowLevelILInstruction (..),
     BNLowLevelILOperation (..),
     BNMediumLevelILInstruction (..),
@@ -69,7 +68,6 @@ module Binja.Types
     BNPossibleValueSet (..),
     BNVariable (..),
     BNSSAVariable (..),
-    BNVariableNameAndType (..),
     AnalysisContext (..),
     FunctionContext (..),
     SSAVariableContext (..),
@@ -344,10 +342,6 @@ type BNBasicBlockPtr = Ptr BNBasicBlock_
 
 type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
-data BNType_
-
-type BNTypePtr = Ptr BNType_
-
 type TargetMap = [(CULLong, CULLong)]
 
 data AnalysisContext = AnalysisContext
@@ -363,6 +357,7 @@ data FunctionContext = FunctionContext
     start :: Word64,
     symbol :: Symbol,
     auto :: Bool,
+    ssaVars :: [BNSSAVariable],
     instructions :: [MediumLevelILSSAInstruction]
     -- vars :: Map.Map SSAVariable SSAVariableContext
     -- architecture :: ??
@@ -563,26 +558,6 @@ data BNSSAVariable = BNSSAVariable
     version :: Int
   }
   deriving (Eq, Ord, Show)
-
--- typedef struct BNVariableNameAndType
--- {
---  BNVariable var;
---  BNType* type;
---  char* name;
---  bool autoDefined;
---  uint8_t typeConfidence;
--- } BNVariableNameAndType;
-
--- Used as an intermediate type to recover
--- variables in an mlil ssa function.
--- Not intended for user of api
-data BNVariableNameAndType = BNVariableNameAndType
-  { varNameTy_var :: !BNVariable,
-    varNameTy_ty :: !BNTypePtr,
-    varNameTy_name :: !(Ptr CString),
-    varNameTy_auto :: !CBool,
-    varNameTy_confidence :: !Word8
-  }
 
 data FunctionList = FunctionList
   { flArrayPtr :: !(ForeignPtr BNFunctionPtr),
