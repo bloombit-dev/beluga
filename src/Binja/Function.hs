@@ -23,7 +23,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNSSAVariable (..), BNVariable, CSize, Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, poke, rawVar, version, when)
+import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNSSAVariable (..), BNVariable, CSize, Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
 import Binja.Utils
 import Control.Monad (unless)
 

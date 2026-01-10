@@ -100,16 +100,16 @@ getFunctionList :: BNBinaryViewPtr -> IO FunctionList
 getFunctionList view =
   alloca $ \countPtr -> do
     rawPtr <- c_BNGetAnalysisFunctionList view countPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
-    arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr (fromIntegral count))
+        else peekArray count' rawPtr
+    arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr $ fromIntegral count')
     pure
       FunctionList
         { flArrayPtr = arrPtr,
-          flCount = count,
+          flCount = count',
           flList = xs,
           flViewPtr = view
         }
@@ -128,12 +128,12 @@ symbols :: BNBinaryViewPtr -> IO [Symbol]
 symbols view =
   alloca $ \countPtr -> do
     rawPtr <- c_BNGetSymbols view countPtr nullPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
-    _ <- newForeignPtr rawPtr (c_BNFreeSymbolList rawPtr (fromIntegral count))
+        else peekArray count' rawPtr
+    _ <- newForeignPtr rawPtr (c_BNFreeSymbolList rawPtr $ fromIntegral count')
     mapM Binja.Symbol.create xs
 
 symbolsByName :: BNBinaryViewPtr -> String -> IO [Symbol]

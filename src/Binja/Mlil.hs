@@ -30,11 +30,11 @@ startIndex func arch' addr = do
     then error "startIndex: called with nullPtr argument"
     else do
       startI <- c_BNMediumLevelILGetInstructionStart func arch' addr
-      count <- c_BNGetMediumLevelILInstructionCount func
+      count' <- c_BNGetMediumLevelILInstructionCount func
       -- Ensure start index is less than total mlil instructions
       -- in function
-      if startI >= count
-        then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count
+      if startI >= count'
+        then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count'
         else pure startI
 
 -- Construct a raw mlil instruction from a ssa function and expression index
@@ -66,11 +66,11 @@ getExprList :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO [MediumLevelILSSAIns
 getExprList func expr operand =
   alloca $ \countPtr -> do
     rawPtr <- c_BNMediumLevelILGetOperandList func expr operand countPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
+        else peekArray count' rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
     mapM (create func . fromIntegral) xs
 
@@ -84,11 +84,11 @@ getIntList :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO [Int]
 getIntList func expr operand =
   alloca $ \countPtr -> do
     rawPtr <- c_BNMediumLevelILGetOperandList func expr operand countPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
+        else peekArray count' rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
     pure $ Prelude.map fromIntegral xs
 
@@ -102,11 +102,11 @@ getVarList :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO [BNVariable]
 getVarList func expr operand =
   alloca $ \countPtr -> do
     rawPtr <- c_BNMediumLevelILGetOperandList func expr operand countPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
+        else peekArray count' rawPtr
     when (rawPtr /= nullPtr) $ c_BNMediumLevelILFreeOperandList rawPtr
     mapM varFromID xs
 
@@ -114,8 +114,8 @@ getSSAVarList :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO [BNSSAVariable]
 getSSAVarList func expr operand =
   alloca $ \countPtr -> do
     rawPtr <- c_BNMediumLevelILGetOperandList func expr operand countPtr
-    count <- fromIntegral <$> peek countPtr :: IO Int
-    let pairCount = count `div` 2
+    count' <- fromIntegral <$> peek countPtr :: IO Int
+    let pairCount = div count' 2
     result <-
       if rawPtr == nullPtr || pairCount == 0
         then pure []
@@ -160,8 +160,8 @@ getTargetMap :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO TargetMap
 getTargetMap func expr operand =
   alloca $ \countPtr -> do
     rawPtr <- c_BNMediumLevelILGetOperandList func expr operand countPtr
-    count <- fromIntegral <$> peek countPtr :: IO Int
-    let pairCount = count `div` 2
+    count' <- fromIntegral <$> peek countPtr :: IO Int
+    let pairCount = div count' 2
     pairs <-
       if rawPtr == nullPtr || pairCount == 0
         then pure []
@@ -238,14 +238,14 @@ callerSites view func = do
 
 defSite :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
 defSite ssaVar funcSSA =
-  alloca $ \varPtr -> do
-    poke varPtr $ rawVar ssaVar
+  alloca $ \varPtr' -> do
+    poke varPtr' $ rawVar ssaVar
     instrSSAIndex <-
       c_BNGetMediumLevelILSSAVarDefinition
         funcSSA
-        varPtr
+        varPtr'
         (fromIntegral $ version ssaVar)
-    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA (fromIntegral instrSSAIndex)
+    exprIndexSSA <- c_BNGetMediumLevelILSSAIndexForInstruction funcSSA $ fromIntegral instrSSAIndex
     instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
     if instrSSAIndex >= instCount
       then pure Nothing
@@ -254,26 +254,26 @@ defSite ssaVar funcSSA =
 useSites :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
 useSites ssaVar funcSSA =
   alloca $ \countPtr -> do
-    alloca $ \varPtr -> do
-      poke varPtr $ rawVar ssaVar
+    alloca $ \varPtr' -> do
+      poke varPtr' $ rawVar ssaVar
       rawResult <-
         c_BNGetMediumLevelILSSAVarUses
           funcSSA
-          varPtr
+          varPtr'
           (fromIntegral $ version ssaVar)
           countPtr
-      count <- fromIntegral <$> peek countPtr :: IO Int
+      count' <- fromIntegral <$> peek countPtr :: IO Int
       result <-
-        if rawResult == nullPtr || count == 0
+        if rawResult == nullPtr || count' == 0
           then pure []
-          else peekArray count rawResult
+          else peekArray count' rawResult
       exprIndexSSAList <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction funcSSA . fromIntegral) result
       instCount <- c_BNGetMediumLevelILSSAInstructionCount funcSSA
       useSites' <-
         catMaybes
           <$> zipWithM
-            ( \instrIndex exprIndex ->
-                createMaybe instCount instrIndex exprIndex funcSSA
+            ( \instrIndex exprIndex' ->
+                createMaybe instCount instrIndex exprIndex' funcSSA
             )
             result
             exprIndexSSAList
@@ -281,10 +281,10 @@ useSites ssaVar funcSSA =
       pure useSites'
   where
     createMaybe :: CSize -> CSize -> CSize -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
-    createMaybe instCount instrIndex exprIndex funcSSA =
+    createMaybe instCount instrIndex exprIndex' funcSSA' =
       if instrIndex >= instCount
         then pure Nothing
-        else Just <$> create funcSSA exprIndex
+        else Just <$> create funcSSA' exprIndex'
 
 -- Convert Constant instruction to symbol if possible
 constantToSymbol :: BNBinaryViewPtr -> Constant -> IO (Maybe Symbol)
