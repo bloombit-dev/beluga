@@ -68,6 +68,7 @@ module Binja.Types
     BNPossibleValueSet (..),
     BNVariable (..),
     BNSSAVariable (..),
+    BNParameterVariablesWithConfidence (..),
     AnalysisContext (..),
     FunctionContext (..),
     SSAVariableContext (..),
@@ -558,6 +559,26 @@ data BNSSAVariable = BNSSAVariable
     version :: Int
   }
   deriving (Eq, Ord, Show)
+
+data BNParameterVariablesWithConfidence = BNParameterVariablesWithConfidence
+  { varPtr :: !(Ptr BNVariable),
+    count :: !CSize,
+    confidence :: !Word64
+  }
+  deriving (Eq, Ord, Show)
+
+instance Storable BNParameterVariablesWithConfidence where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.alignmentS
+  peek ptr = do
+    varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
+    count' <- peekByteOff ptr 8 :: IO CSize
+    confidence' <- peekByteOff ptr 16 :: IO Word64
+    pure $ BNParameterVariablesWithConfidence varPtr' count' confidence'
+  poke ptr (BNParameterVariablesWithConfidence varPtr' count' confidence') = do
+    pokeByteOff ptr 0 varPtr'
+    pokeByteOff ptr 8 count'
+    pokeByteOff ptr 16 confidence'
 
 data FunctionList = FunctionList
   { flArrayPtr :: !(ForeignPtr BNFunctionPtr),

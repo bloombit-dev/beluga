@@ -401,6 +401,12 @@ foreign import ccall "BNGetMediumLevelILSSAVarUses"
 foreign import ccall "BNGetMediumLevelILVariables"
   c_BNGetMediumLevelILVariables :: BNMlilSSAFunctionPtr -> Ptr CSize -> IO (Ptr BNVariable)
 
+foreign import ccall "BNGetFunctionParameterVariablesPtr"
+  c_BNGetFunctionParameterVariablesPtr
+    :: Ptr BNParameterVariablesWithConfidence ->
+       BNFunctionPtr ->
+       IO (Ptr BNParameterVariablesWithConfidence)
+
 foreign import ccall "BNFreeVariableList"
   c_BNFreeVariableList :: Ptr BNVariable -> IO ()
 
