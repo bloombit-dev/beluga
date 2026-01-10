@@ -407,6 +407,9 @@ foreign import ccall "BNGetFunctionParameterVariablesPtr"
        BNFunctionPtr ->
        IO (Ptr BNParameterVariablesWithConfidence)
 
+foreign import ccall "BNFreeParameterVariables"
+  c_BNFreeParameterVariables :: Ptr BNParameterVariablesWithConfidence -> IO ()
+
 foreign import ccall "BNFreeVariableList"
   c_BNFreeVariableList :: Ptr BNVariable -> IO ()
 
