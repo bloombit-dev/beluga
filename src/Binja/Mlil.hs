@@ -177,10 +177,10 @@ getIntrinsicIL :: BNMediumLevelILInstruction -> BNMlilSSAFunctionPtr -> CSize ->
 getIntrinsicIL inst func operand = do
   let index' = getOp inst operand
   rawFunc <- Binja.Function.mlilToRawFunction func
-  let arch' = architecture rawFunc
-  archTy <- getArch arch'
+  archTy <- Binja.Function.architecture func
+  archHandle' <- c_BNGetFunctionArchitecture rawFunc
   intrinsic' <- getIntrinsic archTy index'
-  pure $ ILIntrinsic index' arch' archTy intrinsic'
+  pure $ ILIntrinsic index' archHandle' archTy intrinsic'
 
 getConstraint :: BNMlilSSAFunctionPtr -> BNMediumLevelILInstruction -> CSize -> IO BNPossibleValueSet
 getConstraint func inst operand = do

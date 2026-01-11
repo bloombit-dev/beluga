@@ -54,7 +54,8 @@ at view addr = do
     then error $ "No functions at: " ++ show addr
     else do
       llilFunc <- Binja.Function.llil $ head rawFuncs
-      sIndex <- startIndex llilFunc (Binja.Function.architecture $ head rawFuncs) addr
+      archHandle' <- c_BNGetFunctionArchitecture $ head rawFuncs
+      sIndex <- startIndex llilFunc archHandle' addr
       exprIndex' <- instIndexToExprIndex llilFunc (fromIntegral sIndex)
       llilByIndex llilFunc exprIndex'
 

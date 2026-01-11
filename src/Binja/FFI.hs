@@ -299,7 +299,7 @@ foreign import ccall "BNSetFunctionComment"
   c_BNSetFunctionComment :: BNFunctionPtr -> CString -> IO ()
 
 foreign import ccall "BNGetFunctionArchitecture"
-  c_BNGetFunctionArchitecture :: BNFunctionPtr -> BNArchPtr
+  c_BNGetFunctionArchitecture :: BNFunctionPtr -> IO BNArchPtr
 
 foreign import ccall unsafe "BNGetFunctionLowLevelIL"
   c_BNGetFunctionLowLevelIL :: BNFunctionPtr -> IO BNLlilFunctionPtr
@@ -421,3 +421,6 @@ foreign import ccall "BNGetMediumLevelILVariableSSAVersions"
 
 foreign import ccall "BNFreeILInstructionList"
   c_BNFreeILInstructionList :: Ptr CSize -> IO ()
+
+foreign import ccall "BNGetArchitectureName"
+  c_BNGetArchitectureName :: BNArchPtr -> IO CString

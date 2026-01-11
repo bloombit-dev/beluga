@@ -69,6 +69,7 @@ module Binja.Types
     BNVariable (..),
     BNSSAVariable (..),
     BNParameterVariablesWithConfidence (..),
+    Architecture (..),
     ParameterVars (..),
     AnalysisContext (..),
     FunctionContext (..),
@@ -363,8 +364,8 @@ data FunctionContext = FunctionContext
     instructions :: [MediumLevelILSSAInstruction],
     ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
     aliasedVars :: [BNVariable],
-    parameterVars :: ParameterVars
-    -- architecture :: ??
+    parameterVars :: ParameterVars,
+    architecture :: Architecture
   }
   deriving (Show)
 
@@ -382,14 +383,8 @@ data ILIntrinsic = ILIntrinsic
   }
   deriving (Show, Eq, Ord)
 
-foreign import ccall unsafe "BNGetArchitectureName"
-  c_BNGetArchitectureName ::
-    BNArchPtr -> IO CString
-
-getArch :: BNArchPtr -> IO Architecture
-getArch arch' = do
-  cStr <- c_BNGetArchitectureName arch'
-  str <- peekCString cStr
+getArch :: String -> IO Architecture
+getArch str = do
   case str of
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86

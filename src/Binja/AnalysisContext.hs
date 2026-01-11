@@ -40,6 +40,7 @@ createFunctionContext handle' = do
   ssaVarContext' <- Map.fromList <$> mapM (\l -> createSSAVariableContext l mlilSSAHandle) ssaVariables'
   aliasedVars' <- Binja.Function.aliasedVars mlilSSAHandle
   parameterVars' <- Binja.Function.parameterVars mlilSSAHandle
+  architecture' <- Binja.Function.architecture mlilSSAHandle
   pure
     FunctionContext
       { handle = mlilSSAHandle,
@@ -49,7 +50,8 @@ createFunctionContext handle' = do
         ssaVars = ssaVarContext',
         parameterVars = parameterVars',
         aliasedVars = aliasedVars',
-        instructions = instructions'
+        instructions = instructions',
+        architecture = architecture'
       }
 
 createSSAVariableContext :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (BNSSAVariable, SSAVariableContext)

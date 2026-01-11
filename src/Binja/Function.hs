@@ -25,7 +25,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNParameterVariablesWithConfidence (..), BNSSAVariable (..), BNVariable, CSize, ParameterVars (..), Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
+import Binja.Types (Architecture (..), BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNParameterVariablesWithConfidence (..), BNSSAVariable (..), BNVariable, CSize, ParameterVars (..), Symbol, Word64, alloca, getArch, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
 import Binja.Utils
 import Control.Monad (unless)
 
@@ -65,8 +65,13 @@ getComment func = do
   cStr <- c_BNGetFunctionComment func
   peekCString cStr
 
-architecture :: BNFunctionPtr -> BNArchPtr
-architecture = c_BNGetFunctionArchitecture
+architecture :: BNMlilSSAFunctionPtr -> IO Architecture
+architecture ssaHandle' = do
+  rawHandle' <- Binja.Function.mlilToRawFunction ssaHandle'
+  archHandle <- c_BNGetFunctionArchitecture rawHandle'
+  cStr <- c_BNGetArchitectureName archHandle
+  resolvedStr <- peekCString cStr
+  getArch resolvedStr
 
 setComment :: BNFunctionPtr -> String -> IO ()
 setComment func comment = do
