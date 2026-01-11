@@ -402,10 +402,10 @@ foreign import ccall "BNGetMediumLevelILVariables"
   c_BNGetMediumLevelILVariables :: BNMlilSSAFunctionPtr -> Ptr CSize -> IO (Ptr BNVariable)
 
 foreign import ccall "BNGetFunctionParameterVariablesPtr"
-  c_BNGetFunctionParameterVariablesPtr
-    :: Ptr BNParameterVariablesWithConfidence ->
-       BNFunctionPtr ->
-       IO (Ptr BNParameterVariablesWithConfidence)
+  c_BNGetFunctionParameterVariablesPtr ::
+    Ptr BNParameterVariablesWithConfidence ->
+    BNFunctionPtr ->
+    IO (Ptr BNParameterVariablesWithConfidence)
 
 foreign import ccall "BNFreeParameterVariables"
   c_BNFreeParameterVariables :: Ptr BNParameterVariablesWithConfidence -> IO ()

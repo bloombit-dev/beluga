@@ -12,6 +12,7 @@ module Binja.Function
     Binja.Function.getComment,
     Binja.Function.setComment,
     Binja.Function.ssaVars,
+    Binja.Function.parameterVars,
     Binja.Function.llil,
     Binja.Function.mlil,
     Binja.Function.mlilToSSA,
@@ -23,7 +24,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNSSAVariable (..), BNVariable, CSize, Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
+import Binja.Types (BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNParameterVariablesWithConfidence (..), BNSSAVariable (..), BNVariable, CSize, ParameterVars (..), Symbol, Word64, alloca, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
 import Binja.Utils
 import Control.Monad (unless)
 
@@ -97,6 +98,30 @@ ssaVars func = do
         { rawVar = var,
           version = fromIntegral ver
         }
+
+parameterVars :: BNMlilSSAFunctionPtr -> IO ParameterVars
+parameterVars func =
+  alloca $ \pv -> do
+    rawFuncHandle <- Binja.Function.mlilToRawFunction func
+    _ <- c_BNGetFunctionParameterVariablesPtr pv rawFuncHandle
+    result <- do
+      bnParameterVar <- peek pv
+      if pvCount bnParameterVar == 0
+        then
+          pure $
+            ParameterVars
+              { vars = [],
+                confidence = fromIntegral $ pvConfidence bnParameterVar
+              }
+        else do
+          vars' <- peekArray (fromIntegral $ pvCount bnParameterVar) (pvVarPtr bnParameterVar)
+          pure $
+            ParameterVars
+              { vars = vars',
+                confidence = fromIntegral $ pvConfidence bnParameterVar
+              }
+    when (pv /= nullPtr) $ c_BNFreeParameterVariables pv
+    pure result
 
 llil :: BNFunctionPtr -> IO BNLlilFunctionPtr
 llil func = do

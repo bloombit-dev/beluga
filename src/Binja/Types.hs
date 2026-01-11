@@ -69,6 +69,7 @@ module Binja.Types
     BNVariable (..),
     BNSSAVariable (..),
     BNParameterVariablesWithConfidence (..),
+    ParameterVars (..),
     AnalysisContext (..),
     FunctionContext (..),
     SSAVariableContext (..),
@@ -360,7 +361,8 @@ data FunctionContext = FunctionContext
     symbol :: Symbol,
     auto :: Bool,
     instructions :: [MediumLevelILSSAInstruction],
-    ssaVars :: Map.Map BNSSAVariable SSAVariableContext
+    ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
+    parameterVars :: ParameterVars
     -- architecture :: ??
   }
   deriving (Show)
@@ -561,11 +563,17 @@ data BNSSAVariable = BNSSAVariable
   deriving (Eq, Ord, Show)
 
 data BNParameterVariablesWithConfidence = BNParameterVariablesWithConfidence
-  { varPtr :: !(Ptr BNVariable),
-    count :: !CSize,
-    confidence :: !Word64
+  { pvVarPtr :: !(Ptr BNVariable),
+    pvCount :: !CSize,
+    pvConfidence :: !Word8
   }
-  deriving (Eq, Ord, Show)
+  deriving (Show)
+
+data ParameterVars = ParameterVars
+  { vars :: [BNVariable],
+    confidence :: Int
+  }
+  deriving (Show)
 
 instance Storable BNParameterVariablesWithConfidence where
   sizeOf _ = 24
@@ -573,7 +581,7 @@ instance Storable BNParameterVariablesWithConfidence where
   peek ptr = do
     varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
     count' <- peekByteOff ptr 8 :: IO CSize
-    confidence' <- peekByteOff ptr 16 :: IO Word64
+    confidence' <- peekByteOff ptr 16 :: IO Word8
     pure $ BNParameterVariablesWithConfidence varPtr' count' confidence'
   poke ptr (BNParameterVariablesWithConfidence varPtr' count' confidence') = do
     pokeByteOff ptr 0 varPtr'
