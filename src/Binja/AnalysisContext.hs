@@ -38,10 +38,8 @@ createFunctionContext handle' = do
   instructions' <- Binja.Mlil.instructionsFromFuncNoChildren mlilHandle
   ssaVariables' <- Binja.Function.ssaVars mlilSSAHandle
   ssaVarContext' <- Map.fromList <$> mapM (\l -> createSSAVariableContext l mlilSSAHandle) ssaVariables'
+  aliasedVars' <- Binja.Function.aliasedVars mlilSSAHandle
   parameterVars' <- Binja.Function.parameterVars mlilSSAHandle
-  -- TODO (1) obtain more aliased variables.
-  --          the union of aliased variables, parameter variables and ssa variables
-  --          are all variables for function.
   pure
     FunctionContext
       { handle = mlilSSAHandle,
@@ -50,7 +48,7 @@ createFunctionContext handle' = do
         auto = auto',
         ssaVars = ssaVarContext',
         parameterVars = parameterVars',
-        -- aliasedVars = aliasedVars',
+        aliasedVars = aliasedVars',
         instructions = instructions'
       }
 

@@ -362,6 +362,7 @@ data FunctionContext = FunctionContext
     auto :: Bool,
     instructions :: [MediumLevelILSSAInstruction],
     ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
+    aliasedVars :: [BNVariable],
     parameterVars :: ParameterVars
     -- architecture :: ??
   }

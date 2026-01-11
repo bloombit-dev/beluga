@@ -12,6 +12,7 @@ module Binja.Function
     Binja.Function.getComment,
     Binja.Function.setComment,
     Binja.Function.ssaVars,
+    Binja.Function.aliasedVars,
     Binja.Function.parameterVars,
     Binja.Function.llil,
     Binja.Function.mlil,
@@ -98,6 +99,18 @@ ssaVars func = do
         { rawVar = var,
           version = fromIntegral ver
         }
+
+aliasedVars :: BNMlilSSAFunctionPtr -> IO [BNVariable]
+aliasedVars func = do
+  alloca $ \countVarPtr -> do
+    rawVarPtr <- c_BNGetMediumLevelILAliasedVariables func countVarPtr
+    countVar <- fromIntegral <$> peek countVarPtr
+    rawVarList <-
+      if rawVarPtr == nullPtr || countVar == 0
+        then pure []
+        else peekArray countVar rawVarPtr
+    when (rawVarPtr /= nullPtr) $ c_BNFreeVariableList rawVarPtr
+    pure rawVarList
 
 parameterVars :: BNMlilSSAFunctionPtr -> IO ParameterVars
 parameterVars func =
