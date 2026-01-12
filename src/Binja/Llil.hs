@@ -22,11 +22,11 @@ startIndex func arch' addr = do
     then error "startIndex: called with nullPtr argument"
     else do
       startI <- c_BNLowLevelILGetInstructionStart func arch' addr
-      count <- c_BNGetLowLevelILInstructionCount func
+      count' <- c_BNGetLowLevelILInstructionCount func
       -- Ensure start index is less than total llil instructions
       -- in function
-      if startI >= count
-        then error ("startIndex: startI:" ++ show startI ++ " >= count:" ++ show count)
+      if startI >= count'
+        then error ("startIndex: startI:" ++ show startI ++ " >= count:" ++ show count')
         else pure startI
 
 -- Convert an instruction index into an expression index
@@ -54,7 +54,8 @@ at view addr = do
     then error $ "No functions at: " ++ show addr
     else do
       llilFunc <- Binja.Function.llil $ head rawFuncs
-      sIndex <- startIndex llilFunc (Binja.Function.architecture $ head rawFuncs) addr
+      archHandle' <- c_BNGetFunctionArchitecture $ head rawFuncs
+      sIndex <- startIndex llilFunc archHandle' addr
       exprIndex' <- instIndexToExprIndex llilFunc (fromIntegral sIndex)
       llilByIndex llilFunc exprIndex'
 

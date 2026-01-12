@@ -26,6 +26,7 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+    Binja.AnalysisContext
     Binja.BinaryView
     Binja.FFI
     Binja.Llil

@@ -1,21 +1,20 @@
 module Binja.BinaryView
-  ( load,
-    close,
-    save,
-    hasFunctions,
-    hasSymbols,
-    hasDataVariables,
-    updateAnalysis,
-    updateAnalysisAndWait,
-    abortAnalysis,
-    BNBinaryViewPtr,
-    functions,
-    functionsContaining,
-    functionsAt,
-    functionsByName,
-    symbols,
-    symbolsByName,
-    strings,
+  ( Binja.BinaryView.load,
+    Binja.BinaryView.close,
+    Binja.BinaryView.save,
+    Binja.BinaryView.hasFunctions,
+    Binja.BinaryView.hasSymbols,
+    Binja.BinaryView.hasDataVariables,
+    Binja.BinaryView.updateAnalysis,
+    Binja.BinaryView.updateAnalysisAndWait,
+    Binja.BinaryView.abortAnalysis,
+    Binja.BinaryView.functions,
+    Binja.BinaryView.functionsContaining,
+    Binja.BinaryView.functionsAt,
+    Binja.BinaryView.functionsByName,
+    Binja.BinaryView.symbols,
+    Binja.BinaryView.symbolsByName,
+    Binja.BinaryView.strings,
     Binja.BinaryView.read,
     Binja.BinaryView.symbolAt,
   )
@@ -101,16 +100,16 @@ getFunctionList :: BNBinaryViewPtr -> IO FunctionList
 getFunctionList view =
   alloca $ \countPtr -> do
     rawPtr <- c_BNGetAnalysisFunctionList view countPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
-    arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr (fromIntegral count))
+        else peekArray count' rawPtr
+    arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr $ fromIntegral count')
     pure
       FunctionList
         { flArrayPtr = arrPtr,
-          flCount = count,
+          flCount = count',
           flList = xs,
           flViewPtr = view
         }
@@ -129,17 +128,17 @@ symbols :: BNBinaryViewPtr -> IO [Symbol]
 symbols view =
   alloca $ \countPtr -> do
     rawPtr <- c_BNGetSymbols view countPtr nullPtr
-    count <- fromIntegral <$> peek countPtr
+    count' <- fromIntegral <$> peek countPtr
     xs <-
-      if rawPtr == nullPtr || count == 0
+      if rawPtr == nullPtr || count' == 0
         then pure []
-        else peekArray count rawPtr
-    _ <- newForeignPtr rawPtr (c_BNFreeSymbolList rawPtr (fromIntegral count))
+        else peekArray count' rawPtr
+    _ <- newForeignPtr rawPtr (c_BNFreeSymbolList rawPtr $ fromIntegral count')
     mapM Binja.Symbol.create xs
 
 symbolsByName :: BNBinaryViewPtr -> String -> IO [Symbol]
 symbolsByName view name' = do
-  syms <- symbols view
+  syms <- Binja.BinaryView.symbols view
   pure $ filter (\s -> name s == name') syms
 
 functionsContaining :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]

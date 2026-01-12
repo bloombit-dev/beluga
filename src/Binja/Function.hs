@@ -1,6 +1,5 @@
 module Binja.Function
-  ( Function,
-    Binja.Function.start,
+  ( Binja.Function.start,
     Binja.Function.highestAddress,
     Binja.Function.lowestAddress,
     Binja.Function.symbol,
@@ -12,6 +11,9 @@ module Binja.Function
     Binja.Function.hasUnresolvedIndirectBranches,
     Binja.Function.getComment,
     Binja.Function.setComment,
+    Binja.Function.ssaVars,
+    Binja.Function.aliasedVars,
+    Binja.Function.parameterVars,
     Binja.Function.llil,
     Binja.Function.mlil,
     Binja.Function.mlilToSSA,
@@ -23,7 +25,7 @@ where
 
 import Binja.FFI
 import Binja.Symbol
-import Binja.Types
+import Binja.Types (Architecture (..), BNArchPtr, BNFunctionPtr, BNLlilFunctionPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BNParameterVariablesWithConfidence (..), BNSSAVariable (..), BNVariable, CSize, ParameterVars (..), Symbol, Word64, alloca, getArch, newCString, nullPtr, peek, peekArray, peekCString, rawVar, version, when)
 import Binja.Utils
 import Control.Monad (unless)
 
@@ -63,13 +65,81 @@ getComment func = do
   cStr <- c_BNGetFunctionComment func
   peekCString cStr
 
-architecture :: BNFunctionPtr -> BNArchPtr
-architecture = c_BNGetFunctionArchitecture
+architecture :: BNMlilSSAFunctionPtr -> IO Architecture
+architecture ssaHandle' = do
+  rawHandle' <- Binja.Function.mlilToRawFunction ssaHandle'
+  archHandle <- c_BNGetFunctionArchitecture rawHandle'
+  cStr <- c_BNGetArchitectureName archHandle
+  resolvedStr <- peekCString cStr
+  getArch resolvedStr
 
 setComment :: BNFunctionPtr -> String -> IO ()
 setComment func comment = do
   cStr <- newCString comment
   c_BNSetFunctionComment func cStr
+
+ssaVars :: BNMlilSSAFunctionPtr -> IO [BNSSAVariable]
+ssaVars func = do
+  alloca $ \countVarPtr -> do
+    rawVarPtr <- c_BNGetMediumLevelILVariables func countVarPtr
+    countVar <- fromIntegral <$> peek countVarPtr
+    rawVarList <-
+      if rawVarPtr == nullPtr || countVar == 0
+        then pure []
+        else peekArray countVar rawVarPtr
+    alloca $ \countVersionPtr -> do
+      rawVersionPtr <- c_BNGetMediumLevelILVariableSSAVersions func rawVarPtr countVersionPtr
+      countVersion <- fromIntegral <$> peek countVersionPtr
+      rawVersionList <-
+        if rawVersionPtr == nullPtr
+          then pure []
+          else peekArray countVersion rawVersionPtr
+      when (rawVarPtr /= nullPtr) $ c_BNFreeVariableList rawVarPtr
+      when (rawVersionPtr /= nullPtr) $ c_BNFreeILInstructionList rawVersionPtr
+      pure $ zipWith createSSAVar rawVarList rawVersionList
+  where
+    createSSAVar :: BNVariable -> CSize -> BNSSAVariable
+    createSSAVar var ver =
+      BNSSAVariable
+        { rawVar = var,
+          version = fromIntegral ver
+        }
+
+aliasedVars :: BNMlilSSAFunctionPtr -> IO [BNVariable]
+aliasedVars func = do
+  alloca $ \countVarPtr -> do
+    rawVarPtr <- c_BNGetMediumLevelILAliasedVariables func countVarPtr
+    countVar <- fromIntegral <$> peek countVarPtr
+    rawVarList <-
+      if rawVarPtr == nullPtr || countVar == 0
+        then pure []
+        else peekArray countVar rawVarPtr
+    when (rawVarPtr /= nullPtr) $ c_BNFreeVariableList rawVarPtr
+    pure rawVarList
+
+parameterVars :: BNMlilSSAFunctionPtr -> IO ParameterVars
+parameterVars func =
+  alloca $ \pv -> do
+    rawFuncHandle <- Binja.Function.mlilToRawFunction func
+    _ <- c_BNGetFunctionParameterVariablesPtr pv rawFuncHandle
+    result <- do
+      bnParameterVar <- peek pv
+      if pvCount bnParameterVar == 0
+        then
+          pure $
+            ParameterVars
+              { vars = [],
+                confidence = fromIntegral $ pvConfidence bnParameterVar
+              }
+        else do
+          vars' <- peekArray (fromIntegral $ pvCount bnParameterVar) (pvVarPtr bnParameterVar)
+          pure $
+            ParameterVars
+              { vars = vars',
+                confidence = fromIntegral $ pvConfidence bnParameterVar
+              }
+    when (pv /= nullPtr) $ c_BNFreeParameterVariables pv
+    pure result
 
 llil :: BNFunctionPtr -> IO BNLlilFunctionPtr
 llil func = do

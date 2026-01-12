@@ -59,7 +59,6 @@ module Binja.Types
     BNBasicBlockEdgePtr,
     BNBasicBlockEdge,
     BNBranchType,
-    -- MediumLevelILBasicBlock (..),
     BNValueRangePtr,
     BNLookupTableEntryPtr,
     BNLowLevelILInstruction (..),
@@ -69,6 +68,12 @@ module Binja.Types
     BNPossibleValueSet (..),
     BNVariable (..),
     BNSSAVariable (..),
+    BNParameterVariablesWithConfidence (..),
+    Architecture (..),
+    ParameterVars (..),
+    AnalysisContext (..),
+    FunctionContext (..),
+    SSAVariableContext (..),
     ILIntrinsic (..),
     TargetMap,
     Function (..),
@@ -248,6 +253,7 @@ import Control.Exception (finally)
 import Control.Monad (forM, when)
 import Data.Bits ((.&.))
 import Data.Int (Int64)
+import Data.Map as Map
 import Data.Word (Word32, Word64, Word8)
 import Foreign
   ( Storable (alignment, peek, peekByteOff, poke, pokeByteOff, sizeOf),
@@ -342,6 +348,33 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
+data AnalysisContext = AnalysisContext
+  { viewHandle :: BNBinaryViewPtr,
+    functions :: [FunctionContext],
+    symbols :: [Symbol],
+    strings :: [String]
+  }
+  deriving (Show)
+
+data FunctionContext = FunctionContext
+  { handle :: BNMlilSSAFunctionPtr,
+    start :: Word64,
+    symbol :: Symbol,
+    auto :: Bool,
+    instructions :: [MediumLevelILSSAInstruction],
+    ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
+    aliasedVars :: [BNVariable],
+    parameterVars :: ParameterVars,
+    architecture :: Architecture
+  }
+  deriving (Show)
+
+data SSAVariableContext = SSAVariableContext
+  { defSite :: Maybe MediumLevelILSSAInstruction,
+    useSites :: [MediumLevelILSSAInstruction]
+  }
+  deriving (Show)
+
 data ILIntrinsic = ILIntrinsic
   { index :: !CSize,
     archHandle :: !BNArchPtr,
@@ -350,14 +383,8 @@ data ILIntrinsic = ILIntrinsic
   }
   deriving (Show, Eq, Ord)
 
-foreign import ccall unsafe "BNGetArchitectureName"
-  c_BNGetArchitectureName ::
-    BNArchPtr -> IO CString
-
-getArch :: BNArchPtr -> IO Architecture
-getArch arch' = do
-  cStr <- c_BNGetArchitectureName arch'
-  str <- peekCString cStr
+getArch :: String -> IO Architecture
+getArch str = do
   case str of
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
@@ -432,13 +459,6 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
 
--- data MediumLevelILBasicBlock = MediumLevelILBasicBlock
---  { handle :: BNBasicBlockPtr,
---    incomingEdges :: [BasicBlockEdge],
---    outgoingEdges :: [BasicBlockEdge]
---  }
---  deriving (Show)
-
 data Architecture = Arm64 | X86
   deriving (Show, Eq, Ord)
 
@@ -467,17 +487,17 @@ instance Storable BNPossibleValueSet where
     rvt <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
     val <- peekByteOff ptr 8
     offset' <- peekByteOff ptr 16
-    size <- peekByteOff ptr 24
+    size' <- peekByteOff ptr 24
     ranges <- peekByteOff ptr 32
     valueSet <- peekByteOff ptr 40
     lookupTbl <- peekByteOff ptr 48
     count' <- peekByteOff ptr 56
-    pure (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count')
-  poke ptr (BNPossibleValueSet rvt val offset' size ranges valueSet lookupTbl count') = do
+    pure (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count')
+  poke ptr (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count') = do
     pokeByteOff ptr 0 $ fromEnum rvt
     pokeByteOff ptr 8 val
     pokeByteOff ptr 16 offset'
-    pokeByteOff ptr 24 size
+    pokeByteOff ptr 24 size'
     pokeByteOff ptr 32 ranges
     pokeByteOff ptr 40 valueSet
     pokeByteOff ptr 48 lookupTbl
@@ -537,6 +557,32 @@ data BNSSAVariable = BNSSAVariable
     version :: Int
   }
   deriving (Eq, Ord, Show)
+
+data BNParameterVariablesWithConfidence = BNParameterVariablesWithConfidence
+  { pvVarPtr :: !(Ptr BNVariable),
+    pvCount :: !CSize,
+    pvConfidence :: !Word8
+  }
+  deriving (Show)
+
+data ParameterVars = ParameterVars
+  { vars :: [BNVariable],
+    confidence :: Int
+  }
+  deriving (Show)
+
+instance Storable BNParameterVariablesWithConfidence where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.alignmentS
+  peek ptr = do
+    varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
+    count' <- peekByteOff ptr 8 :: IO CSize
+    confidence' <- peekByteOff ptr 16 :: IO Word8
+    pure $ BNParameterVariablesWithConfidence varPtr' count' confidence'
+  poke ptr (BNParameterVariablesWithConfidence varPtr' count' confidence') = do
+    pokeByteOff ptr 0 varPtr'
+    pokeByteOff ptr 8 count'
+    pokeByteOff ptr 16 confidence'
 
 data FunctionList = FunctionList
   { flArrayPtr :: !(ForeignPtr BNFunctionPtr),

@@ -33,3 +33,9 @@ void BNGetCachedMediumLevelILPossibleValueSetPtr(BNPossibleValueSet* out,
   *out = BNGetCachedMediumLevelILPossibleValueSet(func, i);
 }
 
+void BNGetFunctionParameterVariablesPtr(BNParameterVariablesWithConfidence* out,
+                                        BNFunction* func)
+{
+  *out = BNGetFunctionParameterVariables(func);
+}
+	

@@ -299,7 +299,7 @@ foreign import ccall "BNSetFunctionComment"
   c_BNSetFunctionComment :: BNFunctionPtr -> CString -> IO ()
 
 foreign import ccall "BNGetFunctionArchitecture"
-  c_BNGetFunctionArchitecture :: BNFunctionPtr -> BNArchPtr
+  c_BNGetFunctionArchitecture :: BNFunctionPtr -> IO BNArchPtr
 
 foreign import ccall unsafe "BNGetFunctionLowLevelIL"
   c_BNGetFunctionLowLevelIL :: BNFunctionPtr -> IO BNLlilFunctionPtr
@@ -394,5 +394,33 @@ foreign import ccall "BNGetBasicBlockIncomingEdges"
 foreign import ccall "BNGetMediumLevelILSSAVarDefinition"
   c_BNGetMediumLevelILSSAVarDefinition :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CSize -> IO CSize
 
+-- returns list of instruction index
 foreign import ccall "BNGetMediumLevelILSSAVarUses"
   c_BNGetMediumLevelILSSAVarUses :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> CULLong -> Ptr CULLong -> IO (Ptr CSize)
+
+foreign import ccall "BNGetMediumLevelILVariables"
+  c_BNGetMediumLevelILVariables :: BNMlilSSAFunctionPtr -> Ptr CSize -> IO (Ptr BNVariable)
+
+foreign import ccall "BNGetMediumLevelILAliasedVariables"
+  c_BNGetMediumLevelILAliasedVariables :: BNMlilSSAFunctionPtr -> Ptr CSize -> IO (Ptr BNVariable)
+
+foreign import ccall "BNGetFunctionParameterVariablesPtr"
+  c_BNGetFunctionParameterVariablesPtr ::
+    Ptr BNParameterVariablesWithConfidence ->
+    BNFunctionPtr ->
+    IO (Ptr BNParameterVariablesWithConfidence)
+
+foreign import ccall "BNFreeParameterVariables"
+  c_BNFreeParameterVariables :: Ptr BNParameterVariablesWithConfidence -> IO ()
+
+foreign import ccall "BNFreeVariableList"
+  c_BNFreeVariableList :: Ptr BNVariable -> IO ()
+
+foreign import ccall "BNGetMediumLevelILVariableSSAVersions"
+  c_BNGetMediumLevelILVariableSSAVersions :: BNMlilSSAFunctionPtr -> Ptr BNVariable -> Ptr CSize -> IO (Ptr CSize)
+
+foreign import ccall "BNFreeILInstructionList"
+  c_BNFreeILInstructionList :: Ptr CSize -> IO ()
+
+foreign import ccall "BNGetArchitectureName"
+  c_BNGetArchitectureName :: BNArchPtr -> IO CString
