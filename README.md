@@ -17,6 +17,10 @@ Then build and exec the demo (after changing the path to your license and binary
 - stack build --extra-lib-dirs "$(pwd)"
 - stack run example --extra-lib-dirs "$(pwd)" -- +RTS -N14 -sstats -RTS
 
+## Documentation
+
+Haddock-generated documentation is hosted [here](https://bloombit.dev/documentation/beluga/index.html).
+
 ## Branches
 Tested and implemented against an ultimate license install.
 

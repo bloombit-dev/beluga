@@ -1,6 +1,6 @@
 name: beluga
 version: 0.1
-synopsis: Bindings for binaryninja api
+synopsis: Bindings for binary ninja
 bug-reports: https://github.com/bloombit/beluga/issues
 homepage: https://github.com/bloombit/beluga
 category: FFI
@@ -11,7 +11,7 @@ stability: alpha
 tested-with:
   GHC==9.12
 
-description: Bindings for binaryninja api
+description: Bindings and program analysis for binary ninja
 
 extra-source-files:
 - README.md
@@ -66,4 +66,3 @@ executables:
       - binaryninjacore
     dependencies:
       - beluga
-
