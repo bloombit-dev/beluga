@@ -1,5 +1,15 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
+-- |
+-- Module      : Binja.Mlil
+-- Description : Medium Level IL instruction interface
+-- License     : MIT
+-- Maintainer  : hello@bloombit.dev
+-- Stability   : alpha
+--
+-- @Binja.Mlil@ provides higher level types for medium level IL SSA-variant instructions and utility functions.
+--
+-- Official Mlil Documentation: <https://docs.binary.ninja/dev/bnil-mlil.html Binary Ninja Intermediate Language: Medium Level IL>
 module Binja.Mlil
   ( Binja.Mlil.fromRef,
     Binja.Mlil.callerSites,
@@ -27,24 +37,24 @@ import Data.Maybe (catMaybes)
 startIndex :: BNMlilFunctionPtr -> BNArchPtr -> Word64 -> IO CSize
 startIndex func arch' addr = do
   if arch' == nullPtr || func == nullPtr
-    then error "startIndex: called with nullPtr argument"
+    then error "Binja.Mlil.startIndex: called with nullPtr argument"
     else do
       startI <- c_BNMediumLevelILGetInstructionStart func arch' addr
       count' <- c_BNGetMediumLevelILInstructionCount func
       -- Ensure start index is less than total mlil instructions
       -- in function
       if startI >= count'
-        then error $ "startIndex: startI:" ++ show startI ++ " >= count:" ++ show count'
+        then error $ "Binja.Mlil.startIndex: startI:" ++ show startI ++ " >= count:" ++ show count'
         else pure startI
 
--- Construct a raw mlil instruction from a ssa function and expression index
+-- | Construct a raw mlil instruction from a ssa function and expression index
 mlilSSAByIndex :: BNMlilSSAFunctionPtr -> CSize -> IO BNMediumLevelILInstruction
 mlilSSAByIndex func index' = do
   alloca $ \p -> do
     _ <- c_BNGetMediumLevelILByIndexPtr p func index'
     peek p
 
--- Retrieve the best MLIL instruction for the address in BNReferenceSource
+-- | Retrieve the best MLIL SSA-variant instruction for the address in BNReferenceSource
 fromRef :: BNReferenceSource -> IO MediumLevelILSSAInstruction
 fromRef ref = do
   -- Get mlil (non-ssa) expression index
@@ -201,20 +211,21 @@ blockToInstructions block = do
   ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
   mapM (create mlilSSAFunc) ssaExprs
 
+-- | All top-level instructions in a specific function (children not included).
 instructionsFromFuncNoChildren :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFuncNoChildren func = do
   blocks <- Binja.BasicBlock.fromFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concat perBlock
 
--- All instructions in a specific function
+-- | All instructions (children included) in a specific function.
 instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
   blocks <- Binja.BasicBlock.fromFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concatMap (\l -> l : children l) $ concat perBlock
 
--- All instructions in a binary view
+-- | All instructions (children included) in a binary view.
 instructions :: BNBinaryViewPtr -> IO [MediumLevelILSSAInstruction]
 instructions view = do
   rawFuncs <- Binja.BinaryView.functions view
@@ -236,6 +247,8 @@ callerSites view func = do
     isLocalcall (Localcall _) = True
     isLocalcall _ = False
 
+-- | Derive a definition site from a ssa variable in a medium level IL SSA-variant function if
+--   exists. Function arguments and registers of version 0 do not have definition sites for example.
 defSite :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (Maybe MediumLevelILSSAInstruction)
 defSite ssaVar funcSSA =
   alloca $ \varPtr' -> do
@@ -337,7 +350,8 @@ getOp inst operand =
     4 -> mlOp4 inst
     _ -> error $ "getOp: " ++ show operand ++ " not in [0, .., 4]"
 
--- Lift instruction in mlil ssa function context given an expression index
+-- | Derive a higher level mlil ssa-variant instruction given a mlil ssa function handle
+--   and mlil ssa expression index.
 create :: BNMlilSSAFunctionPtr -> CSize -> IO MediumLevelILSSAInstruction
 create func exprIndex' = do
   rawInst <- mlilSSAByIndex func exprIndex'
@@ -1830,6 +1844,7 @@ create func exprIndex' = do
               }
       pure $ Memory $ MediumLevelILMemPhi rec
 
+-- | Deconstructs the provided instruction to derive the list of all child instructions.
 children :: MediumLevelILSSAInstruction -> [MediumLevelILSSAInstruction]
 children (Localcall lc) =
   case lc of

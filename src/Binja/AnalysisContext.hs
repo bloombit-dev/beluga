@@ -1,28 +1,26 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-{-|
-Module      : Binja.AnalysisContext
-Description : Central abstraction
-License     : MIT
-Maintainer  : hello@bloombit.dev
-Stability   : alpha
-
-@Binja.AnalysisContext@ extracts and lifts low level types from binary ninja into Beluga's central
-abstraction. This is the recommended interface for most users.
-
-[/Reasons not to use:/]
-
-* Less data than AnalysisContext provides is required and have limited hardware.
-* AnalysisContext is fixed to the SSA variant of Medium Level IL.
-
-[/Reasons to use:/]
-
-* Extracts and lifts the common types required by most program analysis in a single call.
-* Abstracts away many low level FFI calls and types.
-* Creates a single type that can be queried in pure functions (no further IO calls required for most analysis).
-  This lends itself to making things easier in creating parallel code.
--}
-
+-- |
+-- Module      : Binja.AnalysisContext
+-- Description : Central abstraction
+-- License     : MIT
+-- Maintainer  : hello@bloombit.dev
+-- Stability   : alpha
+--
+-- @Binja.AnalysisContext@ extracts and lifts low level types from binary ninja into Beluga's central
+-- abstraction. This is the recommended interface for most users.
+--
+-- [/Reasons not to use:/]
+--
+-- * Less data than AnalysisContext provides is required and have limited hardware.
+-- * AnalysisContext is fixed to the SSA variant of Medium Level IL.
+--
+-- [/Reasons to use:/]
+--
+-- * Extracts and lifts the common types required by most program analysis in a single call.
+-- * Abstracts away many low level FFI calls and types.
+-- * Creates a single type that can be queried in pure functions (no further IO calls required for most analysis).
+--   This lends itself to making things easier in creating parallel code.
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
     Binja.AnalysisContext.symbolAt,
@@ -38,7 +36,24 @@ import Binja.Types
 import Data.Map as Map
 import Data.Maybe (catMaybes)
 
-create :: String -> String -> IO AnalysisContext
+-- |
+--
+-- Derive an AnalysisContext from a given filename and json-formatted binja options.
+--
+-- Warning: every function contains a MLIL SSA variant; otherwise this function will
+-- throw an exception.
+--
+-- Suggested minimum settings:
+--
+--   * Set analysis.mode.maxFunctionSize to 0 (disables max function size)
+--   * Set analysis.mode.maxFunctionAnalysisTime to 0 (disables timeouts)
+--   * Set analysis.mode` to intermediate to disable HLIL generation
+create ::
+  -- | Filename either to an executable or an existing binja database (bndb)
+  String ->
+  -- | Options in json format
+  String ->
+  IO AnalysisContext
 create filename options = do
   viewHandle' <- Binja.BinaryView.load filename options
   functions' <- Binja.BinaryView.functions viewHandle'
@@ -85,6 +100,8 @@ createSSAVariableContext var' func = do
   useSites' <- Binja.Mlil.useSites var' func
   pure $ (var', SSAVariableContext {defSite = defSite', useSites = useSites'})
 
+-- |
+-- Acquire the symbol at address if one exists.
 symbolAt :: AnalysisContext -> Word64 -> Maybe Symbol
 symbolAt AnalysisContext {symbols = syms} requestAddr =
   case Prelude.filter ((requestAddr ==) . address) syms of
@@ -107,6 +124,10 @@ constantToSymbol _ (MediumLevelILConstData MediumLevelILConstDataRec {constant =
 constantToSymbol context (MediumLevelILExternPtr MediumLevelILExternPtrRec {constant = c}) = do
   Binja.AnalysisContext.symbolAt context $ fromIntegral c
 
+-- |
+--  Given a call instruction attempt to recover the destination symbol (symbol that is called).
+--  There are many patterns that could occur. Currently only constant destinations are supported.
+--  In the future a cocktail of patterns will be supported. Further reading: <https://dl.acm.org/doi/10.1145/3622833 A Cocktail Approach to Practical Call Graph Construction>
 extractCallDestSymbol :: AnalysisContext -> MediumLevelILSSAInstruction -> Maybe Symbol
 extractCallDestSymbol context callInst =
   case callInst of
@@ -130,5 +151,8 @@ extractCallDestSymbol context callInst =
         Constant c -> Binja.AnalysisContext.constantToSymbol context c
         _ -> Nothing
 
+-- |
+--  Must be called once finished with an AnalysisContext to avoid handle leak.
+--  Suggested pattern: <https://wiki.haskell.org/Bracket_pattern Bracket Pattern>
 close :: AnalysisContext -> IO ()
 close = Binja.BinaryView.close . viewHandle

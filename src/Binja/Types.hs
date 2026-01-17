@@ -280,6 +280,7 @@ alignmentS = 8
 -- BinaryView Types
 -------------------------
 
+-- | Greatest common ancestor of all other binary ninja types
 data BNBinaryView
 
 type BNBinaryViewPtr = Ptr BNBinaryView
@@ -348,20 +349,29 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
+-- | Central abstraction of Beluga
 data AnalysisContext = AnalysisContext
-  { viewHandle :: BNBinaryViewPtr,
+  { -- | Binary View pointer which is the greatest common ancestor for all other types.
+    viewHandle :: BNBinaryViewPtr,
     functions :: [FunctionContext],
     symbols :: [Symbol],
     strings :: [String]
+    -- sections :: [Section]
+    -- segments :: [Segment]
   }
   deriving (Show)
 
+-- | Higher level abstraction of a medium level IL SSA variant function
 data FunctionContext = FunctionContext
   { handle :: BNMlilSSAFunctionPtr,
+    -- | The start address for the function
     start :: Word64,
     symbol :: Symbol,
+    -- | True if the function was discovered via creation of a user function <https://api.binary.ninja/binaryninja.function-module.html#binaryninja.function.Function.auto python-doc>
     auto :: Bool,
+    -- | Top level instructions
     instructions :: [MediumLevelILSSAInstruction],
+    -- | Mapping from SSA variables to their definition site (if exists) and use sites
     ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
     aliasedVars :: [BNVariable],
     parameterVars :: ParameterVars,
@@ -369,6 +379,7 @@ data FunctionContext = FunctionContext
   }
   deriving (Show)
 
+-- | Higher level abstract of ssa variable defintion site (if exists) and use sites
 data SSAVariableContext = SSAVariableContext
   { defSite :: Maybe MediumLevelILSSAInstruction,
     useSites :: [MediumLevelILSSAInstruction]

@@ -1,0 +1,677 @@
+/* @group Theme Variables */
+
+:root {
+  --bg: #E9F4E4;
+  --bg-alt: #e6e1d2;
+  --panel: #f8f6ef;
+  --panel-alt: #f1ede2;
+  --ink: #1f2933;
+  --ink-soft: #4b5563;
+  --ink-muted: #6b7280;
+  --accent: #7fa86f;
+  --accent-deep: #5f7f51;
+  --border-soft: #d2ccbc;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+  --max-width: 960px;
+}
+
+/* @end */
+
+/* @group Fundamentals */
+
+* { margin: 0; padding: 0 }
+
+/* Is this portable? */
+html {
+  background-color: var(--bg);
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  text-align: left;
+  min-height: 100%;
+  position: relative;
+}
+
+p {
+  margin: 0.8em 0;
+}
+
+ul, ol {
+  margin: 0.8em 0 0.8em 2em;
+}
+
+dl {
+  margin: 0.8em 0;
+}
+
+dt {
+  font-weight: bold;
+}
+dd {
+  margin-left: 2em;
+}
+
+a { text-decoration: none; }
+a[href]:link { color: var(--accent-deep); }
+a[href]:visited { color: var(--accent); }
+a[href]:hover { text-decoration: underline; }
+
+a[href].def:link, a[href].def:visited { color: var(--ink); }
+a[href].def:hover { color: var(--ink-soft); }
+
+/* @end */
+
+/* @group Show and hide with JS */
+
+body.js-enabled .hide-when-js-enabled {
+  display: none;
+}
+
+/* @end */
+
+/* @group Fonts & Sizes */
+
+/* Basic technique & IE workarounds from YUI 3
+   For reasons, see:
+      http://yui.yahooapis.com/3.1.1/build/cssfonts/fonts.css
+ */
+
+body {
+  font: 13px/1.4 sans-serif;
+  *font-size: small; /* for IE */
+  *font: x-small;    /* for IE in quirks mode */
+}
+
+h1 { font-size: 146.5%; /* 19pt */ }
+h2 { font-size: 131%;   /* 17pt */ }
+h3 { font-size: 116%;   /* 15pt */ }
+h4 { font-size: 100%;   /* 13pt */ }
+h5 { font-size: 100%;   /* 13pt */ }
+
+select, input, button, textarea {
+  font: 99% sans-serif;
+}
+
+table {
+  font-size: inherit;
+  font: 100%;
+}
+
+pre, code, kbd, samp, tt, .src {
+  font-family: monospace;
+  *font-size: 108%;
+  line-height: 124%;
+}
+
+.links, .link {
+  font-size: 85%; /* 11pt */
+}
+
+#module-header .caption {
+  font-size: 182%; /* 24pt */
+}
+
+#module-header .caption sup {
+  font-size: 70%;
+  font-weight: normal;
+}
+
+.info  {
+  font-size: 85%; /* 11pt */
+}
+
+#table-of-contents, #synopsis  {
+  /* font-size: 85%; /* 11pt */
+}
+
+/* @end */
+
+/* @group Common */
+
+.caption, h1, h2, h3, h4, h5, h6, summary {
+  font-weight: bold;
+  color: var(--accent-deep);
+  margin: 0.8em 0 0.4em;
+}
+
+* + h1, * + h2, * + h3, * + h4, * + h5, * + h6 {
+  margin-top: 2em;
+}
+
+h1 + h2, h2 + h3, h3 + h4, h4 + h5, h5 + h6 {
+  margin-top: inherit;
+}
+
+ul.links {
+  list-style: none;
+  text-align: left;
+  float: right;
+  display: inline-table;
+  margin: 0 0 0 1em;
+}
+
+ul.links li {
+  display: inline;
+  border-left: 1px solid var(--border-soft);
+  white-space: nowrap;
+  padding: 0;
+}
+
+ul.links li a {
+  padding: 0.2em 0.5em;
+}
+
+.hide { display: none; }
+.show { display: inherit; }
+.clear { clear: both; }
+
+.collapser {
+  background-image: url(minus.gif);
+  background-repeat: no-repeat;
+}
+.expander {
+  background-image: url(plus.gif);
+  background-repeat: no-repeat;
+}
+.collapser, .expander {
+  padding-left: 14px;
+  margin-left: -14px;
+  cursor: pointer;
+}
+p.caption.collapser,
+p.caption.expander {
+  background-position: 0 0.4em;
+}
+
+.instance.collapser, .instance.expander {
+  margin-left: 0px;
+  background-position: left center;
+  min-width: 9px;
+  min-height: 9px;
+}
+
+summary {
+  cursor: pointer;
+  outline: none;
+  list-style-image: url(plus.gif);
+  list-style-position: outside;
+}
+
+details[open] > summary {
+  list-style-image: url(minus.gif);
+}
+
+pre {
+  padding: 0.25em;
+  margin: 0.8em 0;
+  background: var(--panel-alt);
+  overflow: auto;
+  border-bottom: 0.25em solid var(--bg);
+  /* border adds some space below the box to compensate
+     for visual extra space that paragraphs have between baseline
+     and the bounding box */
+}
+
+.src {
+  background: var(--panel);
+  padding: 0.2em 0.5em;
+  border-radius: var(--radius-md);
+}
+
+.keyword { font-weight: normal; }
+.def { font-weight: bold; }
+
+@media print {
+  #footer { display: none; }
+}
+
+/* @end */
+
+/* @group Page Structure */
+
+#content {
+  margin: 0 auto;
+  max-width: var(--max-width);
+  padding: 0 2em 6em;
+}
+
+#package-header {
+  background: var(--accent-deep);
+  border-top: 5px solid var(--accent);
+  color: var(--panel);
+  padding: 0.2em;
+  position: relative;
+  text-align: left;
+}
+
+#package-header .caption {
+  background: url(hslogo-16.png) no-repeat 0em;
+  color: var(--panel);
+  margin: 0 2em;
+  font-weight: normal;
+  font-style: normal;
+  padding-left: 2em;
+}
+
+#package-header a:link, #package-header a:visited { color: var(--panel); }
+#package-header a:hover { background: var(--accent); }
+
+#module-header .caption {
+  color: var(--accent-deep);
+  font-weight: bold;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+table.info {
+  float: right;
+  padding: 0.5em 1em;
+  border: 1px solid var(--border-soft);
+  color: var(--ink-soft);
+  background-color: var(--panel);
+  max-width: 40%;
+  border-spacing: 0;
+  position: relative;
+  top: -0.5em;
+  margin: 0 0 0 2em;
+  border-radius: var(--radius-lg);
+}
+
+.info th {
+  padding: 0 1em 0 0;
+}
+
+div#style-menu-holder {
+  position: relative;
+  z-index: 2;
+  display: inline;
+}
+
+#style-menu {
+  position: absolute;
+  z-index: 1;
+  overflow: visible;
+  background: var(--accent-deep);
+  margin: 0;
+  text-align: center;
+  right: 0;
+  padding: 0;
+  top: 1.25em;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+#style-menu li {
+  display: list-item;
+  border-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  list-style-type: none;
+}
+
+#style-menu li + li {
+  border-top: 1px solid var(--border-soft);
+}
+
+#style-menu a {
+  width: 6em;
+  padding: 3px;
+  display: block;
+  color: var(--panel);
+}
+
+#style-menu a:hover {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+#footer {
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border-soft);
+  padding: 0.5em 0;
+  color: var(--ink-muted);
+  text-align: center;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 3em;
+}
+
+/* @end */
+
+/* @group Front Matter */
+
+#table-of-contents {
+  float: right;
+  clear: right;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  padding: 0.5em 1em;
+  max-width: 20em;
+  margin: 0.5em 0 1em 1em;
+  border-radius: var(--radius-lg);
+}
+
+#table-of-contents .caption {
+  text-align: center;
+  margin: 0;
+}
+
+#table-of-contents ul {
+  list-style: none;
+  margin: 0;
+}
+
+#table-of-contents ul ul {
+  margin-left: 2em;
+}
+
+#description .caption {
+  display: none;
+}
+
+#synopsis {
+  display: block;
+  position: fixed;
+  right: 0;
+  height: 80%;
+  top: 10%;
+  padding: 0;
+  max-width: 75%;
+  /* Ensure that synopsis covers everything (including MathJAX markup) */
+  z-index: 1;
+}
+
+#synopsis summary {
+  display: block;
+  float: left;
+  width: 29px;
+  color: rgba(255,255,255,0);
+  height: 110px;
+  margin: 0;
+  font-size: 1px;
+  padding: 0;
+  background: url(synopsis.png) no-repeat 0px -8px;
+}
+
+#synopsis details[open] > summary {
+  background: url(synopsis.png) no-repeat -64px -8px;
+}
+
+#synopsis ul {
+  height: 100%;
+  overflow: auto;
+  padding: 0.5em;
+  margin: 0;
+}
+
+#synopsis ul ul {
+  overflow: hidden;
+}
+
+#synopsis ul,
+#synopsis ul li.src {
+  background-color: var(--panel);
+  white-space: nowrap;
+  list-style: none;
+  margin-left: 0;
+  border-left: 1px solid var(--border-soft);
+}
+
+/* @end */
+
+/* @group Main Content */
+
+#interface div.top { margin: 2em 0; }
+#interface h1 + div.top,
+#interface h2 + div.top,
+#interface h3 + div.top,
+#interface h4 + div.top,
+#interface h5 + div.top {
+  margin-top: 1em;
+}
+
+#interface .src .selflink,
+#interface .src .link {
+  float: right;
+  color: var(--ink-muted);
+  background: var(--panel);
+  padding: 0 0.5em 0.2em;
+  margin: 0 -0.5em 0 0;
+  -moz-user-select: none;
+}
+#interface .src .selflink {
+  border-left: 1px solid var(--border-soft);
+  margin: 0 -0.5em 0 0.5em;
+}
+
+#interface span.fixity {
+  color: var(--ink-muted);
+  border-left: 1px solid var(--border-soft);
+  padding: 0.2em 0.5em 0.2em 0.5em;
+  margin: 0 -1em 0 1em;
+}
+
+#interface span.rightedge {
+  border-left: 1px solid var(--border-soft);
+  padding: 0.2em 0 0.2em 0;
+  margin: 0 0 0 1em;
+}
+
+#interface table { border-spacing: 2px; }
+#interface td {
+  vertical-align: top;
+  padding-left: 0.5em;
+}
+
+#interface td.doc p {
+  margin: 0;
+}
+#interface td.doc p + p {
+  margin-top: 0.8em;
+}
+
+.doc table {
+  border-collapse: collapse;
+  border-spacing: 0px;
+}
+
+.doc th,
+.doc td {
+  padding: 5px;
+  border: 1px solid var(--border-soft);
+}
+
+.doc th {
+  background-color: var(--panel-alt);
+}
+
+.clearfix:after {
+  clear: both;
+  content: " ";
+  display: block;
+  height: 0;
+  visibility: hidden;
+}
+
+.subs.fields ul {
+  list-style: none;
+  display: table;
+  margin: 0;
+}
+
+.subs.fields ul li {
+  display: table-row;
+}
+
+.subs ul li dfn {
+  display: table-cell;
+  font-style: normal;
+  font-weight: bold;
+  margin: 1px 0;
+  white-space: nowrap;
+}
+
+.subs ul li > .doc {
+  display: table-cell;
+  padding-left: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.subs ul li > .doc p {
+  margin: 0;
+}
+
+/* Render short-style data instances */
+.inst ul {
+  height: 100%;
+  padding: 0.5em;
+  margin: 0;
+}
+
+.inst, .inst li {
+  list-style: none;
+  margin-left: 1em;
+}
+
+/* Workaround for bug in Firefox (issue #384) */
+.inst-left {
+  float: left;
+}
+
+.top p.src {
+  border-top: 1px solid var(--border-soft);
+}
+
+.subs, .doc {
+  /* use this selector for one level of indent */
+  padding-left: 2em;
+}
+
+.warning {
+  color: #b42318; /* keep explicit for high-contrast warning */
+}
+
+.arguments {
+  margin-top: -0.4em;
+}
+.arguments .caption {
+  display: none;
+}
+
+.fields { padding-left: 1em; }
+.fields .caption { display: none; }
+.fields p { margin: 0 0; }
+
+/* @end */
+
+/* @group Auxillary Pages */
+
+.extension-list {
+  list-style-type: none;
+  margin-left: 0;
+}
+
+#mini {
+  margin: 0 auto;
+  padding: 0 1em 1em;
+  max-width: var(--max-width);
+}
+
+#mini > * {
+  font-size: 93%; /* 12pt */
+}
+
+#mini #module-list .caption,
+#mini #module-header .caption {
+  font-size: 125%; /* 15pt */
+}
+
+#mini #interface h1,
+#mini #interface h2,
+#mini #interface h3,
+#mini #interface h4 {
+  font-size: 109%; /* 13pt */
+  margin: 1em 0 0;
+}
+
+#mini #interface .top,
+#mini #interface .src {
+  margin: 0;
+}
+
+#mini #module-list ul {
+  list-style: none;
+  margin: 0;
+}
+
+#alphabet ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5em 0 0;
+  text-align: center;
+}
+
+#alphabet li {
+  display: inline;
+  margin: 0 0.25em;
+}
+
+#alphabet a {
+  font-weight: bold;
+  color: var(--accent-deep);
+}
+
+#index .caption,
+#module-list .caption { font-size: 131%; /* 17pt */ }
+
+#index table {
+  margin-left: 2em;
+}
+
+#index .src {
+  font-weight: bold;
+}
+#index .alt {
+  font-size: 77%; /* 10pt */
+  font-style: italic;
+  padding-left: 2em;
+  color: var(--ink-muted);
+}
+
+#index td + td {
+  padding-left: 1em;
+}
+
+#module-list ul {
+  list-style: none;
+  margin: 0 0 0 2em;
+}
+
+#module-list li {
+  clear: right;
+}
+
+#module-list span.collapser,
+#module-list span.expander {
+  background-position: 0 0.3em;
+}
+
+#module-list .package {
+  float: right;
+  color: var(--ink-soft);
+}
+
+:target {
+  background-color: var(--bg-alt);
+  border-radius: var(--radius-md);
+}
+
+/* @end */
+

@@ -1,3 +1,12 @@
+-- |
+-- Module      : Binja.Function
+-- Description : Function interface
+-- License     : MIT
+-- Maintainer  : hello@bloombit.dev
+-- Stability   : alpha
+--
+-- @Binja.Function@ extracts metadata given function handles and converts function handles between
+-- intermediate language types.
 module Binja.Function
   ( Binja.Function.start,
     Binja.Function.highestAddress,
@@ -160,7 +169,7 @@ mlil func = do
       if mlilFuncPtr == nullPtr
         then do
           Binja.Function.print func
-          error "mlil: c_BNGetFunctionMediumLevelIL evaluated to nullPtr"
+          error "Binja.Function.mlil: c_BNGetFunctionMediumLevelIL evaluated to nullPtr"
         else pure mlilFuncPtr
 
 mlilToSSA :: BNMlilFunctionPtr -> IO BNMlilSSAFunctionPtr
