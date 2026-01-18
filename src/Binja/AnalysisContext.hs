@@ -24,6 +24,7 @@
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
     Binja.AnalysisContext.symbolAt,
+    Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
     Binja.AnalysisContext.close,
   )
@@ -35,6 +36,7 @@ import Binja.Mlil
 import Binja.Types
 import Data.Map as Map
 import Data.Maybe (catMaybes)
+import Data.Set as Set
 
 -- |
 --
@@ -150,6 +152,30 @@ extractCallDestSymbol context callInst =
       case dest' of
         Constant c -> Binja.AnalysisContext.constantToSymbol context c
         _ -> Nothing
+
+-- |
+-- Given a function context iterate all instructions to:
+--
+--   * Find call instructions
+--   * Resolve symbols which are called when possible via extractCallDestSymbol
+--
+-- __Assumption__: It is assumed the function context is present in the functions
+-- field of AnalysisContext.
+callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
+callers analysisContext functionContext =
+  Set.fromList $
+    catMaybes $
+      Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
+        Prelude.filter isCall $
+          concat $
+            Prelude.map Binja.Mlil.children $
+              Binja.Types.instructions functionContext
+  where
+    isCall :: MediumLevelILSSAInstruction -> Bool
+    isCall (Localcall _) = True
+    isCall (Tailcall _) = True
+    isCall (Syscall _) = True
+    isCall _ = False
 
 -- |
 --  Must be called once finished with an AnalysisContext to avoid handle leak.

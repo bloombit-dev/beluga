@@ -20,8 +20,7 @@ module Callgraph
   )
 where
 
-import Binja.BinaryView
-import Binja.Function
+import Binja.AnalysisContext
 import Binja.Mlil
 import Binja.Types
 import qualified Data.Map as Map
@@ -32,28 +31,11 @@ type Vertex = Binja.Types.Symbol
 
 type Graph = Map.Map Vertex (Set.Set Vertex)
 
-create :: BNBinaryViewPtr -> IO Graph
-create view = do
-  funcs <- Binja.BinaryView.functions view
-  mlilFuncs <- mapM Binja.Function.mlil funcs
-  mlilInstructions <- mapM Binja.Mlil.instructionsFromFunc mlilFuncs
-  let calls = map (Prelude.filter isCall) mlilInstructions
-  children' <- mapM (mapM (Binja.Mlil.extractCallDestSymbol view)) calls
-  let childrenFlat = map catMaybes children'
-  parents <- mapM Binja.Function.symbol funcs
-  let graph' = Map.fromList $ zip parents $ map Set.fromList childrenFlat
-  pure $
-    let allChildren = Set.unions (Map.elems graph')
-     in Set.foldr
-          (\child -> Map.insertWith (\_ old -> old) child Set.empty)
-          graph'
-          allChildren
-  where
-    isCall :: MediumLevelILSSAInstruction -> Bool
-    isCall (Localcall _) = True
-    isCall (Tailcall _) = True
-    isCall (Syscall _) = True
-    isCall _ = False
+create :: AnalysisContext -> Graph
+create context =
+  Map.fromList $
+    map (\f -> (symbol f, Binja.AnalysisContext.callers context f)) $
+      functions context
 
 vertices :: Graph -> [Vertex]
 vertices = Map.keys
@@ -93,7 +75,7 @@ mostCalled graph =
     v : vs -> Just $ fst $ foldr step (v, value v) vs
   where
     value :: Vertex -> Int
-    value v = length (callers graph v)
+    value v = length (Callgraph.callers graph v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
@@ -109,7 +91,7 @@ mostConnected graph =
   where
     value :: Vertex -> Int
     value v =
-      length (callers graph v)
+      length (Callgraph.callers graph v)
         + length (callees graph v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
