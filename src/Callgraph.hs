@@ -33,9 +33,15 @@ type Graph = Map.Map Vertex (Set.Set Vertex)
 
 create :: AnalysisContext -> Graph
 create context =
-  Map.fromList $
-    map (\f -> (symbol f, Binja.AnalysisContext.callers context f)) $
-      functions context
+  Map.union initialGraph $ Map.fromList $ Prelude.map (\v -> (v, Set.empty)) allChildren
+  where
+    initialGraph :: Graph
+    initialGraph =
+      Map.fromList $
+        map (\f -> (symbol f, Binja.AnalysisContext.callers context f)) $
+          functions context
+    allChildren :: [Vertex]
+    allChildren = Set.toList $ Set.unions $ Map.elems initialGraph
 
 vertices :: Graph -> [Vertex]
 vertices = Map.keys
