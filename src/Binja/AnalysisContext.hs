@@ -51,7 +51,7 @@ import Data.Set as Set
 --   * Set analysis.mode.maxFunctionAnalysisTime to 0 (disables timeouts)
 --   * Set analysis.mode` to intermediate to disable HLIL generation
 create ::
-  -- | Filename either to an executable or an existing binja database (bndb)
+  -- | Filename to an executable or an existing binja database (bndb)
   String ->
   -- | Options in json format
   String ->
@@ -102,8 +102,7 @@ createSSAVariableContext var' func = do
   useSites' <- Binja.Mlil.useSites var' func
   pure $ (var', SSAVariableContext {defSite = defSite', useSites = useSites'})
 
--- |
--- Acquire the symbol at address if one exists.
+-- | Acquire the symbol at address if one exists.
 symbolAt :: AnalysisContext -> Word64 -> Maybe Symbol
 symbolAt AnalysisContext {symbols = syms} requestAddr =
   case Prelude.filter ((requestAddr ==) . address) syms of
