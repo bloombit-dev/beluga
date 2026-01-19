@@ -33,7 +33,7 @@ type Graph = Map.Map Vertex (Set.Set Vertex)
 
 -- | Derive a callgraph from an AnalysisContext.
 -- __Note__: Not all runtime evaluated call destinations will be recovered
--- from Binja.AnalysisContext.callers.
+-- via Binja.AnalysisContext.callers.
 create :: AnalysisContext -> Graph
 create context =
   Map.union initialGraph $ Map.fromList $ Prelude.map (\v -> (v, Set.empty)) allChildren
@@ -72,7 +72,9 @@ leaf graph = Callgraph.vertices $ Callgraph.filter Set.null graph
 
 -- | List of symbols which call source vertex
 callers :: Graph -> Vertex -> [Vertex]
-callers graph source = Callgraph.vertices $ Callgraph.filter (Set.member source) graph
+callers graph source =
+  Callgraph.vertices $
+    Callgraph.filter (Set.member source) graph
 
 -- | List of symbols which source vertex calls
 callees :: Graph -> Vertex -> [Vertex]
