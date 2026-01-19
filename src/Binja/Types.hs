@@ -56,8 +56,10 @@ module Binja.Types
     BNMlilSSAFunctionPtr,
     BNLlilFunctionPtr,
     BNBasicBlockPtr,
+    BasicBlockMlilSSA (..),
     BNBasicBlockEdgePtr,
-    BNBasicBlockEdge,
+    BNBasicBlockEdge (..),
+    BasicBlockEdge (..),
     BNBranchType,
     BNValueRangePtr,
     BNLookupTableEntryPtr,
@@ -421,7 +423,7 @@ data BNBranchType
   | ExceptionBranch
   | UnresolvedBranch
   | UserDefinedBranch
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 instance Enum BNBranchType where
   fromEnum UnconditionalBranch = 0
@@ -453,7 +455,23 @@ data BNBasicBlockEdge = BNBasicBlockEdge
     backEdge :: !CBool,
     fallThrough :: !CBool
   }
-  deriving (Show)
+  deriving (Show, Eq, Ord)
+
+data BasicBlockEdge = BasicBlockEdge
+  { ty :: BNBranchType,
+    backEdge :: Bool,
+    -- | Whether this edge targets to a node whose control flow can eventually flow back through the source node of this edge.
+    fallThrough :: Bool
+  }
+  deriving (Show, Eq, Ord)
+
+data BasicBlockMlilSSA = BasicBlockMlilSSA
+  { start :: !CSize,
+    end :: !CSize,
+    canExit :: !Bool,
+    hasInvalidInstructions :: !Bool
+  }
+  deriving (Show, Eq, Ord)
 
 instance Storable BNBasicBlockEdge where
   sizeOf _ = 24

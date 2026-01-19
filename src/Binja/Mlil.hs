@@ -202,26 +202,26 @@ getConstraint func inst operand = do
 
 blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
 blockToInstructions block = do
-  startExpr <- fromIntegral <$> c_BNGetBasicBlockStart block
-  endExpr <- fromIntegral <$> c_BNGetBasicBlockEnd block
+  startInstrIndex <- fromIntegral <$> c_BNGetBasicBlockStart block
+  endInstrIndex <- fromIntegral <$> c_BNGetBasicBlockEnd block
   func <- c_BNGetBasicBlockFunction block
   mlilFunc <- Binja.Function.mlil func
   mlilSSAFunc <- Binja.Function.mlilSSA func
-  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startExpr .. endExpr - 1]
+  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startInstrIndex .. endInstrIndex - 1]
   ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
   mapM (create mlilSSAFunc) ssaExprs
 
 -- | All top-level instructions in a specific function (children not included).
 instructionsFromFuncNoChildren :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFuncNoChildren func = do
-  blocks <- Binja.BasicBlock.fromFunction func
+  blocks <- Binja.BasicBlock.fromMlilFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concat perBlock
 
 -- | All instructions (children included) in a specific function.
 instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
-  blocks <- Binja.BasicBlock.fromFunction func
+  blocks <- Binja.BasicBlock.fromMlilFunction func
   perBlock <- mapM blockToInstructions blocks
   pure $ concatMap (\l -> l : children l) $ concat perBlock
 
