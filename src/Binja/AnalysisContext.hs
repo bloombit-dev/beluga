@@ -24,6 +24,7 @@
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
     Binja.AnalysisContext.symbolAt,
+    Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
     Binja.AnalysisContext.close,
   )
@@ -35,6 +36,7 @@ import Binja.Mlil
 import Binja.Types
 import Data.Map as Map
 import Data.Maybe (catMaybes)
+import Data.Set as Set
 
 -- |
 --
@@ -49,7 +51,7 @@ import Data.Maybe (catMaybes)
 --   * Set analysis.mode.maxFunctionAnalysisTime to 0 (disables timeouts)
 --   * Set analysis.mode` to intermediate to disable HLIL generation
 create ::
-  -- | Filename either to an executable or an existing binja database (bndb)
+  -- | Filename to an executable or an existing binja database (bndb)
   String ->
   -- | Options in json format
   String ->
@@ -100,8 +102,7 @@ createSSAVariableContext var' func = do
   useSites' <- Binja.Mlil.useSites var' func
   pure $ (var', SSAVariableContext {defSite = defSite', useSites = useSites'})
 
--- |
--- Acquire the symbol at address if one exists.
+-- | Acquire the symbol at address if one exists.
 symbolAt :: AnalysisContext -> Word64 -> Maybe Symbol
 symbolAt AnalysisContext {symbols = syms} requestAddr =
   case Prelude.filter ((requestAddr ==) . address) syms of
@@ -150,6 +151,30 @@ extractCallDestSymbol context callInst =
       case dest' of
         Constant c -> Binja.AnalysisContext.constantToSymbol context c
         _ -> Nothing
+
+-- |
+-- Given a function context iterate all instructions to:
+--
+--   * Find call instructions
+--   * Resolve symbols which are called when possible via extractCallDestSymbol
+--
+-- __Assumption__: It is assumed the function context is present in the functions
+-- field of AnalysisContext.
+callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
+callers analysisContext functionContext =
+  Set.fromList $
+    catMaybes $
+      Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
+        Prelude.filter isCall $
+          concat $
+            Prelude.map Binja.Mlil.children $
+              Binja.Types.instructions functionContext
+  where
+    isCall :: MediumLevelILSSAInstruction -> Bool
+    isCall (Localcall _) = True
+    isCall (Tailcall _) = True
+    isCall (Syscall _) = True
+    isCall _ = False
 
 -- |
 --  Must be called once finished with an AnalysisContext to avoid handle leak.

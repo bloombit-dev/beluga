@@ -20,8 +20,7 @@ module Callgraph
   )
 where
 
-import Binja.BinaryView
-import Binja.Function
+import Binja.AnalysisContext
 import Binja.Mlil
 import Binja.Types
 import qualified Data.Map as Map
@@ -32,28 +31,20 @@ type Vertex = Binja.Types.Symbol
 
 type Graph = Map.Map Vertex (Set.Set Vertex)
 
-create :: BNBinaryViewPtr -> IO Graph
-create view = do
-  funcs <- Binja.BinaryView.functions view
-  mlilFuncs <- mapM Binja.Function.mlil funcs
-  mlilInstructions <- mapM Binja.Mlil.instructionsFromFunc mlilFuncs
-  let calls = map (Prelude.filter isCall) mlilInstructions
-  children' <- mapM (mapM (Binja.Mlil.extractCallDestSymbol view)) calls
-  let childrenFlat = map catMaybes children'
-  parents <- mapM Binja.Function.symbol funcs
-  let graph' = Map.fromList $ zip parents $ map Set.fromList childrenFlat
-  pure $
-    let allChildren = Set.unions (Map.elems graph')
-     in Set.foldr
-          (\child -> Map.insertWith (\_ old -> old) child Set.empty)
-          graph'
-          allChildren
+-- | Derive a callgraph from an AnalysisContext.
+-- __Note__: Not all runtime evaluated call destinations will be recovered
+-- via Binja.AnalysisContext.callers.
+create :: AnalysisContext -> Graph
+create context =
+  Map.union initialGraph $ Map.fromList $ Prelude.map (\v -> (v, Set.empty)) allChildren
   where
-    isCall :: MediumLevelILSSAInstruction -> Bool
-    isCall (Localcall _) = True
-    isCall (Tailcall _) = True
-    isCall (Syscall _) = True
-    isCall _ = False
+    initialGraph :: Graph
+    initialGraph =
+      Map.fromList $
+        map (\f -> (symbol f, Binja.AnalysisContext.callers context f)) $
+          functions context
+    allChildren :: [Vertex]
+    allChildren = Set.toList $ Set.unions $ Map.elems initialGraph
 
 vertices :: Graph -> [Vertex]
 vertices = Map.keys
@@ -61,31 +52,38 @@ vertices = Map.keys
 neighbors :: Graph -> Vertex -> Maybe (Set.Set Vertex)
 neighbors graph source = Map.lookup source graph
 
--- Filter all children that satisfy the predicate
+-- | Filter all children that satisfy the predicate
 filter :: (Set.Set Vertex -> Bool) -> Graph -> Graph
 filter = Map.filter
 
--- Filter all keys/values that satisfy the predicate
+-- | Filter all keys/values that satisfy the predicate
 filterWithKey :: (Vertex -> Set.Set Vertex -> Bool) -> Graph -> Graph
 filterWithKey = Map.filterWithKey
 
--- List of recursive symbols
+-- | List of recursive vertex
 recursive :: Graph -> [Vertex]
-recursive graph = Callgraph.vertices $ Callgraph.filterWithKey (\parent child -> Set.member parent child) graph
+recursive graph =
+  Callgraph.vertices $
+    Callgraph.filterWithKey (\parent child -> Set.member parent child) graph
 
--- List of symbols with no
+-- | List of vertex with no children
 leaf :: Graph -> [Vertex]
 leaf graph = Callgraph.vertices $ Callgraph.filter Set.null graph
 
--- List of symbols which call source symbol
+-- | List of symbols which call source vertex
 callers :: Graph -> Vertex -> [Vertex]
-callers graph source = Callgraph.vertices $ Callgraph.filter (Set.member source) graph
+callers graph source =
+  Callgraph.vertices $
+    Callgraph.filter (Set.member source) graph
 
--- List of symbols which source symbol calls
+-- | List of symbols which source vertex calls
 callees :: Graph -> Vertex -> [Vertex]
 callees graph source =
   maybe [] Set.toList $ Callgraph.neighbors graph source
 
+-- | Find the vertex with the maximum sum of callers.
+--   If multiple vertex share the same maximum caller sum
+--   return the first vertex found of maximum sum.
 mostCalled :: Graph -> Maybe Vertex
 mostCalled graph =
   case Callgraph.vertices graph of
@@ -93,7 +91,7 @@ mostCalled graph =
     v : vs -> Just $ fst $ foldr step (v, value v) vs
   where
     value :: Vertex -> Int
-    value v = length (callers graph v)
+    value v = length (Callgraph.callers graph v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
@@ -101,6 +99,9 @@ mostCalled graph =
         then (candidate, value candidate)
         else (curVertex, curVal)
 
+-- | Find the vertex with the maximum sum of callers and callees.
+--   If multiple vertex share the same maximum sum return the
+--   first vertex found of maximum sum.
 mostConnected :: Graph -> Maybe Vertex
 mostConnected graph =
   case Callgraph.vertices graph of
@@ -109,7 +110,7 @@ mostConnected graph =
   where
     value :: Vertex -> Int
     value v =
-      length (callers graph v)
+      length (Callgraph.callers graph v)
         + length (callees graph v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
@@ -118,7 +119,7 @@ mostConnected graph =
         then (candidate, value candidate)
         else (curVertex, curVal)
 
--- is destination node reachable in source
+-- | Is destination vertex reachable from source vertex
 reachable :: Graph -> Vertex -> Vertex -> Bool
 reachable graph source destination = go Set.empty source
   where
@@ -133,10 +134,10 @@ reachable graph source destination = go Set.empty source
               let visited' = Set.insert v visited
                in any (go visited') (Set.toList ns)
 
--- Number of nodes
+-- | Number of nodes
 order :: Graph -> Int
 order = Map.size
 
--- Numer of edges
+-- | Numer of edges
 size :: Graph -> Int
 size = sum . map Set.size . Map.elems
