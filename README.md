@@ -26,6 +26,12 @@ Tested and implemented against an ultimate license install.
 
 The main branch tracks the current work-in-progress.
 
+# Minimum Version
+
+This repo requires version dev/5.3.8772 or higher. Note the minimum version is due to
+this [merge request](https://github.com/Vector35/binaryninja-api/pull/7757/files#diff-f64ed9c368bddd21174a3884878a65389c7700e247413363cd3f7f5d16ffca0c) changing some enums from Word32 to Word8. This influences certain binja structs
+to have a different Storable instance.
+
 ## Format
 All haskell files are formatted with https://github.com/tweag/ormolu
 
