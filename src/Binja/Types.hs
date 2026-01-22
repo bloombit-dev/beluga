@@ -477,11 +477,11 @@ instance Storable BNBasicBlockEdge where
   sizeOf _ = 24
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    ty' <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
+    ty' <- peekByteOff ptr 0 :: IO Word8
     target' <- peekByteOff ptr 8
     backEdge' <- peekByteOff ptr 16
     fallThrough' <- peekByteOff ptr 17
-    pure $ BNBasicBlockEdge ty' target' backEdge' fallThrough'
+    pure $ BNBasicBlockEdge (toEnum $ fromIntegral ty') target' backEdge' fallThrough'
   poke ptr (BNBasicBlockEdge ty' target' backEdge' fallThrough') = do
     pokeByteOff ptr 0 $ fromEnum ty'
     pokeByteOff ptr 8 target'
@@ -513,7 +513,7 @@ instance Storable BNPossibleValueSet where
   sizeOf _ = 64
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    rvt <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
+    rvt <- peekByteOff ptr 0 :: IO Word32
     val <- peekByteOff ptr 8
     offset' <- peekByteOff ptr 16
     size' <- peekByteOff ptr 24
@@ -521,7 +521,7 @@ instance Storable BNPossibleValueSet where
     valueSet <- peekByteOff ptr 40
     lookupTbl <- peekByteOff ptr 48
     count' <- peekByteOff ptr 56
-    pure (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count')
+    pure (BNPossibleValueSet (toEnum $ fromIntegral rvt) val offset' size' ranges valueSet lookupTbl count')
   poke ptr (BNPossibleValueSet rvt val offset' size' ranges valueSet lookupTbl count') = do
     pokeByteOff ptr 0 $ fromEnum rvt
     pokeByteOff ptr 8 val
@@ -552,10 +552,10 @@ instance Storable BNStringRef where
   sizeOf _ = 24
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    t <- toEnum . fromIntegral <$> (peekByteOff ptr 0 :: IO CInt)
+    t <- peekByteOff ptr 0 :: IO Word8
     s <- peekByteOff ptr 8 :: IO Word64
     l <- peekByteOff ptr 16 :: IO CSize
-    pure (BNStringRef t s l)
+    pure (BNStringRef (toEnum $ fromIntegral t) s l)
   poke ptr (BNStringRef t s l) = do
     pokeByteOff ptr 0 $ fromEnum t
     pokeByteOff ptr 8 s
@@ -572,7 +572,7 @@ instance Storable BNVariable where
   sizeOf _ = 16
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    t <- peekByteOff ptr 0 :: IO Word32
+    t <- peekByteOff ptr 0 :: IO Word8
     r <- peekByteOff ptr 4 :: IO Word32
     s <- peekByteOff ptr 8 :: IO Int64
     pure (BNVariable (toEnum $ fromIntegral t) r s)
@@ -663,7 +663,7 @@ data BNVariableSourceType
   deriving (Eq, Ord, Show, Enum)
 
 data BNLowLevelILInstruction = BNLowLevelILInstruction
-  { llOperation :: !Word32,
+  { llOperation :: !Word8,
     llAttributes :: !Word32,
     llSize :: !CSize,
     llFlags :: !CUInt,
@@ -680,7 +680,7 @@ instance Storable BNLowLevelILInstruction where
   sizeOf _ = 64
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    op <- peekByteOff ptr 0
+    op <- peekByteOff ptr 0 :: IO Word8
     attr <- peekByteOff ptr 4
     sz <- peekByteOff ptr 8
     flg <- peekByteOff ptr 16
@@ -1010,7 +1010,7 @@ instance Storable BNMediumLevelILInstruction where
   sizeOf _ = 72
   alignment _ = Binja.Types.alignmentS
   peek ptr = do
-    op <- peekByteOff ptr 0 :: IO Word32
+    op <- peekByteOff ptr 0 :: IO Word8
     attr <- peekByteOff ptr 4 :: IO Word32
     srcOp <- peekByteOff ptr 8 :: IO Word32
     sz <- peekByteOff ptr 16 :: IO CSize

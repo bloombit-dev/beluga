@@ -36,5 +36,4 @@ create context = do
   -- construct the CFG:
   --   (1) each liftedBlock is an entry into the CFG
   --   (2) children are derived from (targets of rawOutgoingEdges, outgoingEdges')
-  Prelude.print (show context, show outgoingEdges')
   pure Map.empty

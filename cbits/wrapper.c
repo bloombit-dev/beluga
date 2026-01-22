@@ -17,7 +17,7 @@ void BNGetMediumLevelILByIndexPtr(BNMediumLevelILInstruction* out,
 void BNGetMediumLevelSSAILByIndexPtr(BNMediumLevelILInstruction* out,
                                      BNMediumLevelILFunction* func, size_t i)
 {
-  return BNGetMediumLevelILByIndexPtr(out, func, i);
+  *out = BNGetMediumLevelILByIndex(func, i);
 }
 
 
