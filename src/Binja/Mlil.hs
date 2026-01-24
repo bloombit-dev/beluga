@@ -24,7 +24,6 @@ module Binja.Mlil
   )
 where
 
-import Binja.BasicBlock
 import Binja.BinaryView
 import Binja.FFI
 import Binja.Function
@@ -51,7 +50,6 @@ startIndex func arch' addr = do
 mlilSSAByIndex :: BNMlilSSAFunctionPtr -> CSize -> IO BNMediumLevelILInstruction
 mlilSSAByIndex func index' = do
   alloca $ \p -> do
-    rawFunc <- Binja.Function.mlilToRawFunction func
     _ <- c_BNGetMediumLevelILByIndexPtr p func index'
     peek p
 
@@ -200,17 +198,6 @@ getConstraint func inst operand = do
     peek p
   where
     constraintIndex = getOp inst operand
-
-blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
-blockToInstructions block = do
-  startInstrIndex <- fromIntegral <$> c_BNGetBasicBlockStart block
-  endInstrIndex <- fromIntegral <$> c_BNGetBasicBlockEnd block
-  func <- c_BNGetBasicBlockFunction block
-  mlilFunc <- Binja.Function.mlil func
-  mlilSSAFunc <- Binja.Function.mlilSSA func
-  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startInstrIndex .. endInstrIndex - 1]
-  ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
-  mapM (create mlilSSAFunc) ssaExprs
 
 -- | All top-level instructions in a specific function (children not included).
 instructionsFromFuncNoChildren :: BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]

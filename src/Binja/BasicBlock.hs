@@ -66,21 +66,26 @@ fromBlockPtr blockPtr = do
   hasInvalidInstructions' <- c_BNBasicBlockHasInvalidInstructions blockPtr -- CBool to Bool
   pure $
     BasicBlockMlilSSA
-      { start = fromIntegral startInstructionIndex,
+      { handle = blockPtr,
+        start = fromIntegral startInstructionIndex,
         end = fromIntegral endInstructionIndex - 1,
         canExit = toBool canExit',
         hasInvalidInstructions = toBool hasInvalidInstructions'
       }
 
-fromBlockEdge :: BNBasicBlockEdge -> BasicBlockEdge
+fromBlockEdge :: BNBasicBlockEdge -> IO BasicBlockEdge
 fromBlockEdge
   BNBasicBlockEdge
     { ty = edgeTy,
+      target = target',
       backEdge = backEdge',
       fallThrough = fallThrough'
-    } =
-    BasicBlockEdge
-      { ty = edgeTy,
-        backEdge = Binja.Utils.toBool backEdge',
-        fallThrough = Binja.Utils.toBool fallThrough'
-      }
+    } = do
+    liftedBlock <- fromBlockPtr target'
+    pure
+      BasicBlockEdge
+        { ty = edgeTy,
+          target = liftedBlock,
+          backEdge = Binja.Utils.toBool backEdge',
+          fallThrough = Binja.Utils.toBool fallThrough'
+        }

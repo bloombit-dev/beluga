@@ -21,10 +21,8 @@ module Callgraph
 where
 
 import Binja.AnalysisContext
-import Binja.Mlil
 import Binja.Types
 import qualified Data.Map as Map
-import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 
 type Vertex = Binja.Types.Symbol

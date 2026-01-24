@@ -1,24 +1,14 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Binja.ControlFlowGraph
-  ( Binja.ControlFlowGraph.CFG,
-    Binja.ControlFlowGraph.create,
+  ( Binja.ControlFlowGraph.create,
   )
 where
 
 import Binja.BasicBlock
-import Binja.Function
 import Binja.Types
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-
-data Vertex = Vertex
-  { block :: Binja.Types.BasicBlockMlilSSA,
-    edge :: Binja.Types.BasicBlockEdge
-  }
-  deriving (Show, Eq, Ord)
-
-type CFG = Map.Map Vertex (Set.Set Vertex)
 
 -- outgoing edges becomes a lookup into the graph
 --
@@ -26,14 +16,24 @@ type CFG = Map.Map Vertex (Set.Set Vertex)
 -- incoming edges becomces filter of the graph of keys with children containing block of interest
 --
 
-create :: FunctionContext -> IO CFG
-create context = do
-  rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction $ handle context
+create :: BNMlilSSAFunctionPtr -> IO Binja.Types.CFG
+create handle' = do
+  -- blocks in function
+  rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction handle'
   liftedBlocks <- mapM Binja.BasicBlock.fromBlockPtr rawBlocks
+  -- edges from blocks
   rawOutgoingEdges <- mapM Binja.BasicBlock.outgoingEdges rawBlocks
-  -- lift the target basic block to the higher level type
-  let outgoingEdges' = Prelude.map (Prelude.map Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
-  -- construct the CFG:
-  --   (1) each liftedBlock is an entry into the CFG
-  --   (2) children are derived from (targets of rawOutgoingEdges, outgoingEdges')
-  pure Map.empty
+  outgoingEdges' <- mapM (mapM Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
+  -- construct control flow graph
+  let initialGraph =
+        Map.fromList $
+          zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'
+  let allChildren =
+        Set.toList $
+          Set.map (\(BasicBlockEdge {target = t}) -> t) $
+            Set.unions $
+              Map.elems initialGraph
+  pure $
+    Map.union initialGraph $
+      Map.fromList $
+        Prelude.map (\v -> (v, Set.empty)) allChildren

@@ -31,6 +31,7 @@ module Binja.AnalysisContext
 where
 
 import Binja.BinaryView
+import Binja.ControlFlowGraph
 import Binja.Function
 import Binja.Mlil
 import Binja.Types
@@ -82,6 +83,7 @@ createFunctionContext handle' = do
   aliasedVars' <- Binja.Function.aliasedVars mlilSSAHandle
   parameterVars' <- Binja.Function.parameterVars mlilSSAHandle
   architecture' <- Binja.Function.architecture mlilSSAHandle
+  cfg' <- Binja.ControlFlowGraph.create mlilSSAHandle
   pure
     FunctionContext
       { handle = mlilSSAHandle,
@@ -92,7 +94,8 @@ createFunctionContext handle' = do
         parameterVars = parameterVars',
         aliasedVars = aliasedVars',
         instructions = instructions',
-        architecture = architecture'
+        architecture = architecture',
+        cfg = cfg'
       }
 
 createSSAVariableContext :: BNSSAVariable -> BNMlilSSAFunctionPtr -> IO (BNSSAVariable, SSAVariableContext)

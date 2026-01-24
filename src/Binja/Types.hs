@@ -248,6 +248,7 @@ module Binja.Types
     MediumLevelILFreeVarSlotSsaRec (..),
     MediumLevelILVarPhiRec (..),
     MediumLevelILMemPhiRec (..),
+    CFG,
   )
 where
 
@@ -256,6 +257,7 @@ import Control.Monad (forM, when)
 import Data.Bits ((.&.))
 import Data.Int (Int64)
 import Data.Map as Map
+import Data.Set as Set
 import Data.Word (Word32, Word64, Word8)
 import Foreign
   ( Storable (alignment, peek, peekByteOff, poke, pokeByteOff, sizeOf),
@@ -351,6 +353,8 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
+type CFG = Map.Map BasicBlockMlilSSA (Set.Set BasicBlockEdge)
+
 -- | Central abstraction of Beluga
 data AnalysisContext = AnalysisContext
   { -- | Binary View pointer which is the greatest common ancestor for all other types.
@@ -377,7 +381,8 @@ data FunctionContext = FunctionContext
     ssaVars :: Map.Map BNSSAVariable SSAVariableContext,
     aliasedVars :: [BNVariable],
     parameterVars :: ParameterVars,
-    architecture :: Architecture
+    architecture :: Architecture,
+    cfg :: CFG
   }
   deriving (Show)
 
@@ -459,6 +464,7 @@ data BNBasicBlockEdge = BNBasicBlockEdge
 
 data BasicBlockEdge = BasicBlockEdge
   { ty :: BNBranchType,
+    target :: BasicBlockMlilSSA,
     backEdge :: Bool,
     -- | Whether this edge targets to a node whose control flow can eventually flow back through the source node of this edge.
     fallThrough :: Bool
@@ -466,7 +472,8 @@ data BasicBlockEdge = BasicBlockEdge
   deriving (Show, Eq, Ord)
 
 data BasicBlockMlilSSA = BasicBlockMlilSSA
-  { start :: !CSize,
+  { handle :: !BNBasicBlockPtr,
+    start :: !CSize,
     end :: !CSize,
     canExit :: !Bool,
     hasInvalidInstructions :: !Bool
