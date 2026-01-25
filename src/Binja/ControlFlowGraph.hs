@@ -2,6 +2,7 @@
 
 module Binja.ControlFlowGraph
   ( Binja.ControlFlowGraph.create,
+    Binja.ControlFlowGraph.blocks,
     Binja.ControlFlowGraph.order,
     Binja.ControlFlowGraph.size,
   )
@@ -46,6 +47,9 @@ create handle' = do
           Map.fromList $
             Prelude.map (\v -> (v, Set.empty)) allChildren
   pure $ Binja.Types.CFGContext {entry = entryBlock', graph = graph'}
+
+blocks :: Binja.Types.CFGContext -> [BasicBlockMlilSSA]
+blocks = Map.keys . graph
 
 -- | Number of nodes
 order :: Binja.Types.CFGContext -> Int
