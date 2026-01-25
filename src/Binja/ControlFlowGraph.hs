@@ -9,6 +9,7 @@ where
 
 import Binja.BasicBlock
 import Binja.Types (BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), CFGContext (..))
+import Data.List (find)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -24,8 +25,10 @@ create handle' = do
   rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction handle'
   liftedBlocks <- mapM Binja.BasicBlock.fromBlockPtr rawBlocks
   -- entry block
-  let entryBlock' = head $ filter (\bb -> 0 == start bb) liftedBlocks
-  Prelude.print $ show entryBlock'
+  entryBlock' <-
+    case Data.List.find ((0 ==) . start) liftedBlocks of
+      Nothing -> error "Binja.ControlFlowGraph.create: No entry block found."
+      Just bb -> pure bb
   -- edges from blocks
   rawOutgoingEdges <- mapM Binja.BasicBlock.outgoingEdges rawBlocks
   outgoingEdges' <- mapM (mapM Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
