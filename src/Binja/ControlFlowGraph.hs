@@ -33,19 +33,9 @@ create handle' = do
   -- edges from blocks
   rawOutgoingEdges <- mapM Binja.BasicBlock.outgoingEdges rawBlocks
   outgoingEdges' <- mapM (mapM Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
-  -- construct control flow graph
-  let initialGraph =
+  let graph' =
         Map.fromList $
           zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'
-  let allChildren =
-        Set.toList $
-          Set.map (\(BasicBlockEdge {target = t}) -> t) $
-            Set.unions $
-              Map.elems initialGraph
-  let graph' =
-        Map.union initialGraph $
-          Map.fromList $
-            Prelude.map (\v -> (v, Set.empty)) allChildren
   pure $ Binja.Types.CFGContext {entry = entryBlock', graph = graph'}
 
 blocks :: Binja.Types.CFGContext -> [BasicBlockMlilSSA]
