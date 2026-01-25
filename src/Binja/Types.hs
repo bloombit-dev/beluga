@@ -248,7 +248,7 @@ module Binja.Types
     MediumLevelILFreeVarSlotSsaRec (..),
     MediumLevelILVarPhiRec (..),
     MediumLevelILMemPhiRec (..),
-    CFG,
+    CFGContext (..),
   )
 where
 
@@ -353,7 +353,11 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
-type CFG = Map.Map BasicBlockMlilSSA (Set.Set BasicBlockEdge)
+data CFGContext = CFGContext
+  { graph :: Map.Map BasicBlockMlilSSA (Set.Set BasicBlockEdge),
+    entry :: BasicBlockMlilSSA
+  }
+  deriving (Show)
 
 -- | Central abstraction of Beluga
 data AnalysisContext = AnalysisContext
@@ -382,7 +386,7 @@ data FunctionContext = FunctionContext
     aliasedVars :: [BNVariable],
     parameterVars :: ParameterVars,
     architecture :: Architecture,
-    cfg :: CFG
+    cfg :: CFGContext
   }
   deriving (Show)
 

@@ -10,8 +10,6 @@ module Binja.BasicBlock
   )
 where
 
--- implement BasicBlockMlilSSA -> dominators etc
-
 import Binja.FFI
 import Binja.Types (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
 import Binja.Utils (toBool)
