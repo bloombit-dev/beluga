@@ -38,6 +38,7 @@ library:
     Binja.Symbol
     Binja.Types
     Binja.Utils
+    Binja.ControlFlowGraph
     Callgraph
   other-modules: []
   ghc-options:

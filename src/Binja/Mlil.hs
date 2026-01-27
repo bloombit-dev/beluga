@@ -24,7 +24,6 @@ module Binja.Mlil
   )
 where
 
-import Binja.BasicBlock
 import Binja.BinaryView
 import Binja.FFI
 import Binja.Function
@@ -200,37 +199,25 @@ getConstraint func inst operand = do
   where
     constraintIndex = getOp inst operand
 
-blockToInstructions :: BNBasicBlockPtr -> IO [MediumLevelILSSAInstruction]
-blockToInstructions block = do
-  startExpr <- fromIntegral <$> c_BNGetBasicBlockStart block
-  endExpr <- fromIntegral <$> c_BNGetBasicBlockEnd block
-  func <- c_BNGetBasicBlockFunction block
-  mlilFunc <- Binja.Function.mlil func
-  mlilSSAFunc <- Binja.Function.mlilSSA func
-  exprs <- mapM (c_BNGetMediumLevelILIndexForInstruction mlilFunc) [startExpr .. endExpr - 1]
-  ssaExprs <- mapM (c_BNGetMediumLevelILSSAExprIndex mlilFunc) exprs
-  mapM (create mlilSSAFunc) ssaExprs
-
 -- | All top-level instructions in a specific function (children not included).
-instructionsFromFuncNoChildren :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
+instructionsFromFuncNoChildren :: BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFuncNoChildren func = do
-  blocks <- Binja.BasicBlock.fromFunction func
-  perBlock <- mapM blockToInstructions blocks
-  pure $ concat perBlock
+  count' <- fromIntegral <$> c_BNGetMediumLevelILSSAInstructionCount func
+  exprs <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction func) [0 .. count' - 1]
+  mapM (create func) exprs
 
 -- | All instructions (children included) in a specific function.
-instructionsFromFunc :: BNMlilFunctionPtr -> IO [MediumLevelILSSAInstruction]
+instructionsFromFunc :: BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]
 instructionsFromFunc func = do
-  blocks <- Binja.BasicBlock.fromFunction func
-  perBlock <- mapM blockToInstructions blocks
-  pure $ concatMap (\l -> l : children l) $ concat perBlock
+  count' <- c_BNGetMediumLevelILSSAExprCount func
+  mapM (create func) [0 .. count' - 1]
 
 -- | All instructions (children included) in a binary view.
 instructions :: BNBinaryViewPtr -> IO [MediumLevelILSSAInstruction]
 instructions view = do
   rawFuncs <- Binja.BinaryView.functions view
-  mlilFuncs <- mapM Binja.Function.mlil rawFuncs
-  insts <- mapM instructionsFromFunc mlilFuncs
+  mlilSSAFuncs <- mapM Binja.Function.mlilSSA rawFuncs
+  insts <- mapM instructionsFromFunc mlilSSAFuncs
   pure $ concat insts
 
 callerSites :: BNBinaryViewPtr -> BNMlilSSAFunctionPtr -> IO [MediumLevelILSSAInstruction]

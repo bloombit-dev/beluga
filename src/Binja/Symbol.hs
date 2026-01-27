@@ -10,7 +10,7 @@ where
 
 import Binja.FFI
 import Binja.ReferenceSource
-import Binja.Types
+import Binja.Types (BNBinaryViewPtr, BNReferenceSource, BNSymbolPtr, CInt, Symbol (..), SymbolBinding, SymbolType (..), Word64, peekCString)
 import Binja.Utils
 
 ty :: BNSymbolPtr -> IO SymbolType
