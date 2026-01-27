@@ -9,7 +9,7 @@ module Binja.ControlFlowGraph
 where
 
 import Binja.BasicBlock
-import Binja.Types (BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), CFGContext (..))
+import Binja.Types (BNMlilSSAFunctionPtr, BasicBlockMlilSSA (..), CFGContext (..))
 import Data.List (find)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -38,6 +38,7 @@ create handle' = do
           zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'
   pure $ Binja.Types.CFGContext {entry = entryBlock', graph = graph'}
 
+-- | List of blocks making up function
 blocks :: Binja.Types.CFGContext -> [BasicBlockMlilSSA]
 blocks = Map.keys . graph
 
