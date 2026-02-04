@@ -1,7 +1,7 @@
 resolver: nightly-2026-01-06
-resolver: ghc-9.12.3
+resolver: ghc-9.12.2
 extra-deps:
-  - async-2.2.5@sha256:b7648c6165729a973d95cb328f9fd874813a81c727707e8b2552b4f03399763b,3366
-  - base64-bytestring-1.2.1.0@sha256:45305ccf8914c66d385b518721472c7b8c858f1986945377f74f85c1e0d49803,2502
-  - parallel-3.3.0.0@sha256:62ada58893e9bd760ae2d9fc37d6ca18c9ea6237cb52ab6ce60a77db304ff696,1747
-  - hashable-1.5.0.0@sha256:2f23146cbe0325029927b221647695a4c7d6e97548ff731110979e34361f58ef,5914
+  - async-2.2.5
+  - base64-bytestring-1.2.1.0
+  - parallel-3.3.0.0
+  - hashable-1.5.0.0
