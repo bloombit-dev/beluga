@@ -9,6 +9,8 @@ module Binja.BinaryView
     Binja.BinaryView.updateAnalysisAndWait,
     Binja.BinaryView.abortAnalysis,
     Binja.BinaryView.functions,
+    Binja.BinaryView.entryFunctions,
+    Binja.BinaryView.entryFunction,
     Binja.BinaryView.functionsContaining,
     Binja.BinaryView.functionsAt,
     Binja.BinaryView.functionsByName,
@@ -116,6 +118,34 @@ getFunctionList view =
 
 functions :: BNBinaryViewPtr -> IO [BNFunctionPtr]
 functions = fmap flList . getFunctionList
+
+getEntryFunctionList :: BNBinaryViewPtr -> IO FunctionList
+getEntryFunctionList view =
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetAllEntryFunctions view countPtr
+    count' <- fromIntegral <$> peek countPtr
+    xs <-
+      if rawPtr == nullPtr || count' == 0
+        then pure []
+        else peekArray count' rawPtr
+    arrPtr <- newForeignPtr rawPtr (c_BNFreeFunctionList rawPtr $ fromIntegral count')
+    pure
+      FunctionList
+        { flArrayPtr = arrPtr,
+          flCount = count',
+          flList = xs,
+          flViewPtr = view
+        }
+
+entryFunctions :: BNBinaryViewPtr -> IO [BNFunctionPtr]
+entryFunctions = fmap flList . getEntryFunctionList
+
+entryFunction :: BNBinaryViewPtr -> IO (Maybe BNFunctionPtr)
+entryFunction view = do
+  rawFunc <- c_BNGetAnalysisEntryPoint view
+  if rawFunc == nullPtr
+    then pure Nothing
+    else pure $ Just rawFunc
 
 functionsByName :: BNBinaryViewPtr -> String -> IO [BNFunctionPtr]
 functionsByName view name' = do

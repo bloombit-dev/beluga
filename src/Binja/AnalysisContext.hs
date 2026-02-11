@@ -61,12 +61,18 @@ create filename options = do
   viewHandle' <- Binja.BinaryView.load filename options
   functions' <- Binja.BinaryView.functions viewHandle'
   functionContexts <- mapM createFunctionContext functions'
+  entryFunction' <- Binja.BinaryView.entryFunction viewHandle'
+  entryFunctionContext <- traverse createFunctionContext entryFunction'
+  entryFunctions' <- Binja.BinaryView.entryFunctions viewHandle'
+  entryFunctionContexts <- mapM createFunctionContext entryFunctions'
   symbols' <- Binja.BinaryView.symbols viewHandle'
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
   pure
     AnalysisContext
       { viewHandle = viewHandle',
         functions = functionContexts,
+        entryFunction = entryFunctionContext,
+        entryFunctions = entryFunctionContexts,
         symbols = symbols',
         strings = strings'
       }

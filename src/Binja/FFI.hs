@@ -56,6 +56,15 @@ foreign import ccall "BNIsSymbolAutoDefined"
 foreign import ccall "BNGetSymbolByAddress"
   c_BNGetSymbolByAddress :: BNBinaryViewPtr -> Word64 -> BNNameSpacePtr -> IO BNSymbolPtr
 
+foreign import ccall "BNGetAnalysisEntryPoint"
+  c_BNGetAnalysisEntryPoint :: BNBinaryViewPtr -> IO BNFunctionPtr
+
+foreign import ccall "BNGetAllEntryFunctions"
+  c_BNGetAllEntryFunctions ::
+    BNBinaryViewPtr ->
+    Ptr CSize ->
+    IO (Ptr BNFunctionPtr)
+
 foreign import ccall unsafe "BNMediumLevelILGetInstructionStart"
   c_BNMediumLevelILGetInstructionStart ::
     BNMlilFunctionPtr -> BNArchPtr -> Word64 -> IO CSize

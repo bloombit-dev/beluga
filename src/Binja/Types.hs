@@ -364,6 +364,10 @@ data AnalysisContext = AnalysisContext
   { -- | Binary View pointer which is the greatest common ancestor for all other types.
     viewHandle :: BNBinaryViewPtr,
     functions :: [FunctionContext],
+    entryFunction :: Maybe FunctionContext,
+    -- | List of entry functions like init_array, fini_array, TLS callbacks, etc.
+    -- Exported functions in shared objects not included.
+    entryFunctions :: [FunctionContext],
     symbols :: [Symbol],
     strings :: [String]
     -- sections :: [Section]
