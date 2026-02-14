@@ -7,14 +7,22 @@ where
 
 import Binja.Types
 import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Algebra.Graph.Acyclic.AdjacencyMap as Acyclic
 
 type Vertex = Binja.Types.MediumLevelILSSAInstruction
+type Graph = Acyclic.AdjacencyMap Vertex
 
-type Graph = Map.Map Vertex (Set.Set Vertex)
+data Dependence = Dependence
+  { root :: Vertex,
+    graph :: Graph
+  }
 
-create :: AnalysisContext -> MediumLevelILSSAInstruction -> Graph
-create context inst = createAux context inst Map.empty
+create :: AnalysisContext -> MediumLevelILSSAInstruction -> Dependence
+create context inst =
+  Dependence {
+    root = inst,
+    graph = createAux context inst Acyclic.empty
+  }
 
 createAux :: AnalysisContext -> MediumLevelILSSAInstruction -> Graph -> Graph
 createAux context (Localcall lc) graph' =

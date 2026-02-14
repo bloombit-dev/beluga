@@ -23,6 +23,7 @@ dependencies:
 - containers >= 0.7
 - parallel
 - async
+- algebraic-graphs
 library:
   source-dirs: src
   exposed-modules:

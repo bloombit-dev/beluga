@@ -5,3 +5,4 @@ extra-deps:
   - base64-bytestring-1.2.1.0
   - parallel-3.3.0.0
   - hashable-1.5.0.0
+  - algebraic-graphs-0.8
