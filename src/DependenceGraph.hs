@@ -6,7 +6,6 @@ module DependenceGraph
 where
 
 import Binja.Types
-import qualified Data.Map as Map
 import qualified Algebra.Graph.Acyclic.AdjacencyMap as Acyclic
 
 type Vertex = Binja.Types.MediumLevelILSSAInstruction
