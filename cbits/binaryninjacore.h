@@ -37,7 +37,7 @@
 // Current ABI version for linking to the core. This is incremented any time
 // there are changes to the API that affect linking, including new functions,
 // new types, or modifications to existing functions or types.
-#define BN_CURRENT_CORE_ABI_VERSION 166
+#define BN_CURRENT_CORE_ABI_VERSION 167
 
 // Minimum ABI version that is supported for loading of plugins. Plugins that
 // are linked to an ABI version less than this will not be able to load and
@@ -101,23 +101,24 @@
 // In C++, use an explicitly sized enum directly.
 // In C, add a typedef to the underlying type and use an unnamed enum to define the values.
 #if defined(__cplusplus)
-    #define BN_ENUM(type, name) enum __BN_ENUM_ATTRIBUTES name : type
+	#define BN_ENUM(type, name) enum __BN_ENUM_ATTRIBUTES name : type
 #elif __has_extension(c_fixed_enum)
-    #define BN_ENUM(type, name) typedef type name; enum __BN_ENUM_ATTRIBUTES name : type
+  #define BN_ENUM(type, name) typedef type name; enum __BN_ENUM_ATTRIBUTES name : type
 #else
-    #define BN_ENUM(type, name) typedef type name; enum __BN_ENUM_ATTRIBUTES
+	#define BN_ENUM(type, name) typedef type name; enum __BN_ENUM_ATTRIBUTES
 #endif
 
 // BN_OPTIONS macro for defining flag enums with explicit size in a C-compatible way
 // In C++, use an explicitly sized enum directly.
 // In C, add a typedef to the underlying type and use an unnamed enum to define the values.
 #if defined(__cplusplus)
-	  #define BN_OPTIONS(type, name) enum __BN_OPTIONS_ATTRIBUTES name : type
+	#define BN_OPTIONS(type, name) enum __BN_OPTIONS_ATTRIBUTES name : type
 #elif __has_extension(c_fixed_enum)
-    #define BN_OPTIONS(type, name) typedef type name; enum __BN_OPTIONS_ATTRIBUTES name : type
+  #define BN_OPTIONS(type, name) typedef type name; enum __BN_OPTIONS_ATTRIBUTES name : type
 #else
-    #define BN_OPTIONS(type, name) typedef type name; enum __BN_OPTIONS_ATTRIBUTES
+	#define BN_OPTIONS(type, name) typedef type name; enum __BN_OPTIONS_ATTRIBUTES
 #endif
+
 
 /*!
     @addtogroup core
@@ -1100,6 +1101,8 @@ extern "C"
 		DoubleDisplayType,
 		EnumerationDisplayType,
 		InvertedCharacterConstantDisplayType,
+		UnsignedComplementDecimalDisplayType,
+		UnsignedComplementHexadecimalDisplayType,
 	};
 
 	BN_ENUM(uint8_t, BNFlowGraphOption)
