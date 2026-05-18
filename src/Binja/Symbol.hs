@@ -87,12 +87,11 @@ print sym = do
   addr <- Binja.Symbol.address sym
   ord <- Binja.Symbol.ordinal sym
   isAuto <- Binja.Symbol.auto sym
-  putStrLn "==============================="
-  putStrLn ("Name      : " ++ nameStr)
-  putStrLn ("Type      : " ++ show t)
-  putStrLn ("Binding   : " ++ show b)
-  putStrLn ("ShortName : " ++ sname)
-  putStrLn ("FullName  : " ++ fname)
-  putStrLn ("Address   : " ++ show addr)
-  putStrLn ("Ordinal   : " ++ show ord)
-  putStrLn ("Auto      : " ++ show isAuto)
+  putStrLn $ "Name:" ++ nameStr
+  putStrLn $ "Type: " ++ show t
+  putStrLn $ "Binding: " ++ show b
+  putStrLn $ "ShortName: " ++ sname
+  putStrLn $ "FullName: " ++ fname
+  putStrLn $ "Address: " ++ show addr
+  putStrLn $ "Ordinal: " ++ show ord
+  putStrLn $ "Auto: " ++ show isAuto

@@ -55,6 +55,19 @@ library:
   extra-libraries:
     - binaryninjacore
 
+tests:
+  all:
+    main: Test.hs
+    source-dirs: test
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+    extra-libraries:
+      - binaryninjacore
+    dependencies:
+      - beluga
+
 executables:
   example:
     main: Main.hs
