@@ -363,6 +363,8 @@ data CFGContext = CFGContext
 data AnalysisContext = AnalysisContext
   { -- | Binary View pointer which is the greatest common ancestor for all other types.
     viewHandle :: BNBinaryViewPtr,
+    -- | Path to file used to derive AnalysisContext
+    filename :: String,
     functions :: [FunctionContext],
     entryFunction :: Maybe FunctionContext,
     -- | List of entry functions like init_array, fini_array, TLS callbacks, etc.
@@ -373,7 +375,6 @@ data AnalysisContext = AnalysisContext
     -- sections :: [Section]
     -- segments :: [Segment]
   }
-  deriving (Show)
 
 -- | Higher level abstraction of a medium level IL SSA variant function
 data FunctionContext = FunctionContext

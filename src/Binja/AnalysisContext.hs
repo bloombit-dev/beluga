@@ -26,6 +26,7 @@ module Binja.AnalysisContext
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
+    Binja.AnalysisContext.summary,
     Binja.AnalysisContext.close,
   )
 where
@@ -35,6 +36,7 @@ import Binja.ControlFlowGraph
 import Binja.Function
 import Binja.Mlil
 import Binja.Types
+import Binja.Utils
 import Data.Map as Map
 import Data.Maybe (catMaybes)
 import Data.Set as Set
@@ -57,8 +59,8 @@ create ::
   -- | Options in json format
   String ->
   IO AnalysisContext
-create filename options = do
-  viewHandle' <- Binja.BinaryView.load filename options
+create filename' options = do
+  viewHandle' <- Binja.BinaryView.load filename' options
   functions' <- Binja.BinaryView.functions viewHandle'
   functionContexts <- mapM createFunctionContext functions'
   entryFunction' <- Binja.BinaryView.entryFunction viewHandle'
@@ -70,6 +72,7 @@ create filename options = do
   pure
     AnalysisContext
       { viewHandle = viewHandle',
+        filename = filename',
         functions = functionContexts,
         entryFunction = entryFunctionContext,
         entryFunctions = entryFunctionContexts,
@@ -189,3 +192,54 @@ callers analysisContext functionContext =
 --  Suggested pattern: <https://wiki.haskell.org/Bracket_pattern Bracket Pattern>
 close :: AnalysisContext -> IO ()
 close = Binja.BinaryView.close . viewHandle
+
+-- |
+-- Returns a string summary of values contained in an analysis context
+-- including basic block count, function count, etc.
+summary :: AnalysisContext -> String
+summary analysisContext =
+  " ["
+    ++ green "+"
+    ++ "] Filename: "
+    ++ (magenta $ filename analysisContext)
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] Function count: "
+    ++ functionCount
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] Mlil basic block count: "
+    ++ bbCount
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] Entry Function: "
+    ++ entryFunction'
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] Entry Functions count: "
+    ++ entryFunctions'
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] String count: "
+    ++ stringCount
+    ++ "\n"
+    ++ " ["
+    ++ green "+"
+    ++ "] Symbol count: "
+    ++ symbolCount
+    ++ "\n"
+  where
+    functionCount = magenta $ show $ length $ Binja.Types.functions analysisContext
+    bbCount = magenta $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
+    entryFunction' =
+      case Binja.Types.entryFunction analysisContext of
+        Nothing -> magenta "No entry function."
+        Just f -> "Entry function: " ++ (magenta $ show $ Binja.Types.symbol f)
+    entryFunctions' = magenta $ show $ length $ Binja.Types.entryFunctions analysisContext
+    stringCount = magenta $ show $ length $ Binja.Types.strings analysisContext
+    symbolCount = magenta $ show $ length $ Binja.Types.symbols analysisContext
