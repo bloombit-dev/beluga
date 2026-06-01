@@ -22,7 +22,7 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 beluga.cabal
-test
+test/
 *.dylib
 *.sh
 stack.yaml.lock

@@ -7,6 +7,7 @@ module Binja.Utils
     blue,
     cyan,
     magenta,
+    orange,
   )
 where
 
@@ -31,10 +32,11 @@ esc code s = unsafePerformIO $ do
     True -> pure $ "\ESC[" ++ code ++ "m" ++ s ++ "\ESC[0m"
     False -> pure s
 
-red, green, yellow, blue, cyan, magenta :: String -> String
+red, green, yellow, blue, cyan, magenta, orange :: String -> String
 red = esc "38;5;196"
 green = esc "38;5;46"
 yellow = esc "38;5;226"
 blue = esc "38;5;33"
 cyan = esc "38;5;51"
 magenta = esc "38;5;201"
+orange = esc "38;5;208"

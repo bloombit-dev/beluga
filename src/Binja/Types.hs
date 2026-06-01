@@ -273,6 +273,7 @@ import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (FunPtr, Ptr, nullFunPtr, nullPtr)
 import GHC.Float (castWord32ToFloat, castWord64ToDouble, float2Double)
 import GHC.ForeignPtr (ForeignPtr)
+import Numeric (showHex)
 
 pointerSize :: Int
 pointerSize = sizeOf (undefined :: Ptr ())
@@ -372,6 +373,7 @@ data AnalysisContext = AnalysisContext
     entryFunctions :: [FunctionContext],
     symbols :: [Symbol],
     strings :: [String]
+    -- image base :: Word64
     -- sections :: [Section]
     -- segments :: [Segment]
   }
@@ -667,7 +669,21 @@ data Symbol = Symbol
     address :: Word64,
     auto :: Bool
   }
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Symbol where
+  show (Symbol name' ty' binding' address' auto') =
+    "Symbol {name = "
+      ++ show name'
+      ++ ", ty = "
+      ++ show ty'
+      ++ ", binding = "
+      ++ show binding'
+      ++ ", address = 0x"
+      ++ showHex address' ""
+      ++ ", auto = "
+      ++ show auto'
+      ++ "}"
 
 data BNStringType = AsciiString | Utf16String | Utf32String | Utf8String
   deriving (Eq, Show, Enum)
