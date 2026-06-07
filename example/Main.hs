@@ -1,35 +1,35 @@
 module Main where
 
-import Prelude hiding (log)
 import Binja.AnalysisContext
 import Binja.ControlFlowGraph
-import Binja.FFI (shutdown, getVersionString)
+import Binja.FFI (getVersionString, shutdown)
 import Binja.Types
 import Control.Monad (forM_)
 import Data.Char (isSpace)
 import System.IO
+import Prelude hiding (log)
 
 filenames :: [String]
 filenames =
   [ -- "./test/macos/cmake",
     -- "./test/macos/libsignal-client.node",
     -- "./test/macos/d8",
-    --"./test/macos/sudo.bndb",
-    --"./test/qcadsp8380.mbn"
+    -- "./test/macos/sudo.bndb",
+    -- "./test/qcadsp8380.mbn"
     -- "./test/macos/chrome",
     -- "./test/macos/git",
     -- "./test/macos/llvm18/clang-18",
     -- "./test/macos/llvm18/libLLVMDemangle.a",
     -- "./test/macos/llvm18/mlir-opt",
-     "./test/macos/webkit-304137@main/libANGLE-shared.dylib.bndb"
-     --"./test/macos/webkit-304137@main/minidom",
-     --"./test/macos/webkit-304137@main/libWebCoreTestSupport.dylib",
-     --"./test/macos/webkit-304137@main/libwebrtc.dylib"
+    "./test/macos/webkit-304137@main/libANGLE-shared.dylib.bndb"
+    -- "./test/macos/webkit-304137@main/minidom",
+    -- "./test/macos/webkit-304137@main/libWebCoreTestSupport.dylib",
+    -- "./test/macos/webkit-304137@main/libwebrtc.dylib"
   ]
 
 -- Derive a filename without spaces from binja version
 sanitizeVersion :: String -> String
-sanitizeVersion = map (\c -> if isSpace c then '_' else c)
+sanitizeVersion = map $ \c -> if isSpace c then '_' else c
 
 main :: IO ()
 main = do
@@ -60,4 +60,5 @@ main = do
       log $ "   [*] Basic block count: " ++ (show blockCount)
       log $ "   [*] Total block edge count: " ++ (show totalEdges)
       log " [*] Processing complete."
+      Binja.AnalysisContext.close context
   shutdown
