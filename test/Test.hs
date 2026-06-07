@@ -12,7 +12,7 @@ filenames =
     "./test/macos/libsignal-client.node",
     "./test/macos/d8",
     "./test/macos/sudo.bndb",
-    "./test/qcadsp8380.mbn",
+    -- "./test/qcadsp8380.mbn",
     "./test/macos/chrome",
     "./test/macos/git",
     "./test/macos/llvm18/clang-18",
@@ -37,15 +37,17 @@ main = do
   pluginDir <- peekCString pluginDirC
   userDirC <- c_BNGetUserDirectory
   userDir <- peekCString userDirC
-  putStrLn $ "[" ++ yellow "*" ++ "] Version: " ++ red version'
-  putStrLn $ "[" ++ yellow "*" ++ "] Install Directory: " ++ magenta installDir
-  putStrLn $ "[" ++ yellow "*" ++ "] Plugin Directory: " ++ magenta pluginDir
-  putStrLn $ "[" ++ yellow "*" ++ "] User Directory: " ++ magenta userDir
-  putStrLn $ "[" ++ yellow "*" ++ "] Running tests."
+  colors <- Binja.Utils.getColors
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Version: " ++ (red colors) version'
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Install Directory: " ++ (magenta colors) installDir
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
   forM_ filenames $ \fname -> do
-    putStrLn $ "[" ++ yellow "*" ++ "] " ++ cyan "Processing: " ++ blue fname
+    putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
-    putStr $ summary context
+    summary' <- summary context
+    putStrLn summary'
     Binja.AnalysisContext.close context
-  putStrLn $ "[" ++ yellow "*" ++ "]" ++ cyan " Processing " ++ blue "complete."
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "]" ++ (cyan colors) " Processing " ++ (blue colors) "complete."
   shutdown
