@@ -196,50 +196,51 @@ close = Binja.BinaryView.close . viewHandle
 -- |
 -- Returns a string summary of values contained in an analysis context
 -- including basic block count, function count, etc.
-summary :: AnalysisContext -> String
-summary analysisContext =
-  " ["
-    ++ green "+"
-    ++ "] Filename: "
-    ++ (magenta $ filename analysisContext)
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] Function count: "
-    ++ functionCount
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] Mlil basic block count: "
-    ++ bbCount
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] Entry Function: "
-    ++ entryFunction'
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] Entry Functions count: "
-    ++ entryFunctions'
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] String count: "
-    ++ stringCount
-    ++ "\n"
-    ++ " ["
-    ++ green "+"
-    ++ "] Symbol count: "
-    ++ symbolCount
-    ++ "\n"
-  where
-    functionCount = magenta $ show $ length $ Binja.Types.functions analysisContext
-    bbCount = magenta $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
-    entryFunction' =
-      case Binja.Types.entryFunction analysisContext of
-        Nothing -> magenta "No entry function."
-        Just f -> "Entry function: " ++ (magenta $ show $ Binja.Types.symbol f)
-    entryFunctions' = magenta $ show $ length $ Binja.Types.entryFunctions analysisContext
-    stringCount = magenta $ show $ length $ Binja.Types.strings analysisContext
-    symbolCount = magenta $ show $ length $ Binja.Types.symbols analysisContext
+summary :: AnalysisContext -> IO String
+summary analysisContext = do
+  colors <- Binja.Utils.getColors
+  let functionCount = magenta colors $ show $ length $ Binja.Types.functions analysisContext
+      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
+      entryFunction' =
+        case Binja.Types.entryFunction analysisContext of
+          Nothing -> magenta colors $ "No entry function."
+          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.symbol f)
+      entryFunctions' = magenta colors $ show $ length $ Binja.Types.entryFunctions analysisContext
+      stringCount = magenta colors $ show $ length $ Binja.Types.strings analysisContext
+      symbolCount = magenta colors $ show $ length $ Binja.Types.symbols analysisContext
+  pure $
+    " ["
+      ++ (green colors) "+"
+      ++ "] Filename: "
+      ++ (magenta colors $ filename analysisContext)
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Function count: "
+      ++ functionCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Mlil basic block count: "
+      ++ bbCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry Function: "
+      ++ entryFunction'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry Functions count: "
+      ++ entryFunctions'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] String count: "
+      ++ stringCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Symbol count: "
+      ++ symbolCount
+      ++ "\n"

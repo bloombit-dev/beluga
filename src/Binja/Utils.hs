@@ -1,19 +1,13 @@
 module Binja.Utils
   ( toBool,
     ptrToMaybe,
-    red,
-    green,
-    yellow,
-    blue,
-    cyan,
-    magenta,
-    orange,
+    Colors (..),
+    getColors,
   )
 where
 
 import Binja.Types
 import System.IO (hIsTerminalDevice, stdout)
-import System.IO.Unsafe (unsafePerformIO)
 
 toBool :: CBool -> Bool
 toBool (CBool 0) = False
@@ -24,19 +18,36 @@ ptrToMaybe p
   | p == nullPtr = Nothing
   | otherwise = Just p
 
-{-# NOINLINE esc #-}
-esc :: String -> String -> String
-esc code s = unsafePerformIO $ do
-  isTty <- hIsTerminalDevice stdout
-  case isTty of
-    True -> pure $ "\ESC[" ++ code ++ "m" ++ s ++ "\ESC[0m"
-    False -> pure s
+data Colors = Colors
+  { red :: String -> String,
+    green :: String -> String,
+    yellow :: String -> String,
+    blue :: String -> String,
+    cyan :: String -> String,
+    magenta :: String -> String,
+    orange :: String -> String
+  }
 
-red, green, yellow, blue, cyan, magenta, orange :: String -> String
-red = esc "38;5;196"
-green = esc "38;5;46"
-yellow = esc "38;5;226"
-blue = esc "38;5;33"
-cyan = esc "38;5;51"
-magenta = esc "38;5;201"
-orange = esc "38;5;208"
+-- |
+-- Populate Colors with:
+-- * identity function
+-- * color coded string
+-- dependent on hIsTerminalDevice stdout
+getColors :: IO Colors
+getColors = do
+  isTty <- hIsTerminalDevice stdout
+  let esc :: String -> String -> String
+      esc color text =
+        case isTty of
+          True -> "\ESC[" ++ color ++ "m" ++ text ++ "\ESC[0m"
+          False -> text
+  pure $
+    Colors
+      { red = esc "38;5;196",
+        green = esc "38;5;46",
+        yellow = esc "38;5;226",
+        blue = esc "38;5;33",
+        cyan = esc "38;5;51",
+        magenta = esc "38;5;201",
+        orange = esc "38;5;208"
+      }
