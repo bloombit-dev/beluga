@@ -2,6 +2,7 @@
 
 Program analysis and bindings in Haskell for binary ninja with support for the medium level SSA intermediate language.
 
+
 ## Build Instructions
 Symlink binary ninja core shared objects to package root.
 
@@ -28,10 +29,18 @@ The main branch tracks the current work-in-progress.
 
 # Minimum Version
 
-This repo requires version dev/5.3.8772 or higher. Note the minimum version is due to
-this [merge request](https://github.com/Vector35/binaryninja-api/pull/7757/files#diff-f64ed9c368bddd21174a3884878a65389c7700e247413363cd3f7f5d16ffca0c) changing some enums from Word32 to Word8. This influences certain binja structs
-to have a different Storable instance.
+This repo requires binary ninja version dev/5.4.9588 Ultimate. Other ultimate versions may work though assume it's not tested.
+To upgrade binja version it's advised to compare the results of ```unit_test.sh``` between the known working version
+and new version.
 
-## Format
+## Code Format
 All haskell files are formatted with https://github.com/tweag/ormolu
 
+## Related Work and References
+
+The primary inspiration of Beluga is [Frama-C](https://frama-c.com)'s Eva [plugin](https://frama-c.com/fc-plugins/eva.html).
+I've found numerous bugs in C codebases with Eva and I want the same experience with binary ninja's MLIL SSA intermediate language.
+
+Frama-c book: [Guide to Software Verification with Frama-C](https://link.springer.com/book/10.1007/978-3-031-55608-1)
+
+Sophia d'Antoine of [Margin Research](https://margin.re) taught a course, [Program Analysis for Vulnerability Research](https://margin.re/training/), which covered abstract interpretation implementation in Binary Ninja.
