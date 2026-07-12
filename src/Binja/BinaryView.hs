@@ -253,11 +253,11 @@ symbolAt view addr = do
   if symbolPtr == nullPtr
     then do
       funcs <- functionsAt view addr
-      if length funcs > 0
-        then do
-          sym <- Binja.Function.symbol $ head funcs
+      case funcs of
+        [] -> pure Nothing
+        (hd : _) -> do
+          sym <- Binja.Function.symbol hd
           pure $ Just sym
-        else pure Nothing
     else do
       sym <- Binja.Symbol.create symbolPtr
       pure $ Just sym
