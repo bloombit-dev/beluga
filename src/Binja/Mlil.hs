@@ -507,7 +507,6 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      error $ "MLIL_RETURN_BY_REF: " ++ (show $ MediumLevelILReturnByRef rec)
       pure $ MediumLevelILReturnByRef rec
     MLIL_CONST -> do
       constant' <- getInt rawInst 0
@@ -947,7 +946,6 @@ create func exprIndex' = do
               }
       pure $ MediumLevelILSharedParamSlot rec
     MLIL_VAR_OUTPUT -> do
-      error "MLIL_VAR_OUTPUT"
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       let rec =
             MediumLevelILVarOutputRec
@@ -956,7 +954,6 @@ create func exprIndex' = do
               }
       pure $ RegisterStack $ MediumLevelILVarOutput rec
     MLIL_VAR_OUTPUT_FIELD -> do
-      error "MLIL_VAR_OUTPUT_FIELD"
       dest' <- varFromID $ fromIntegral $ getOp rawInst 0
       offset' <- getInt rawInst 1
       let rec =
@@ -967,7 +964,6 @@ create func exprIndex' = do
               }
       pure $ SetVar $ MediumLevelILVarOutputField rec
     MLIL_STORE_OUTPUT -> do
-      error "MLIL_STORE_OUTPUT"
       dest' <- getExpr func $ getOp rawInst 0
       let rec =
             MediumLevelILStoreOutputRec
