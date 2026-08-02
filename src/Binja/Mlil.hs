@@ -1938,7 +1938,6 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      error $ show $ Arithmetic $ MediumLevelILPopcnt rec
       pure $ Arithmetic $ MediumLevelILPopcnt rec
     MLIL_CLZ -> do
       src' <- getExpr func $ getOp rawInst 0
@@ -1955,7 +1954,6 @@ create func exprIndex' = do
               { src = src',
                 core = coreInst
               }
-      error $ show $ Arithmetic $ MediumLevelILCtz rec
       pure $ Arithmetic $ MediumLevelILCtz rec
     MLIL_RBIT -> do
       src' <- getExpr func $ getOp rawInst 0
