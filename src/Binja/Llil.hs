@@ -61,11 +61,11 @@ fromRef ref = do
 at :: BNBinaryViewPtr -> Word64 -> IO BNLowLevelILInstruction
 at view addr = do
   rawFuncs <- functionsContaining view addr
-  if null rawFuncs
-    then error $ "Binja.Llil.at: No functions at: " ++ show addr
-    else do
-      llilFunc <- Binja.Function.llil $ head rawFuncs
-      archHandle' <- c_BNGetFunctionArchitecture $ head rawFuncs
+  case rawFuncs of
+    [] -> error $ "Binja.Llil.at: No functions at: " ++ show addr
+    (hd : _) -> do
+      llilFunc <- Binja.Function.llil hd
+      archHandle' <- c_BNGetFunctionArchitecture hd
       sIndex <- startIndex llilFunc archHandle' addr
       exprIndex' <- instIndexToExprIndex llilFunc (fromIntegral sIndex)
       llilByIndex llilFunc exprIndex'

@@ -110,7 +110,10 @@ module Binja.Types
     IntrinsicInstruction (..),
     MediumLevelILCallSsaRec (..),
     MediumLevelILCallOutputSsaRec (..),
-    MediumLevelILCallOutputRec (..),
+    MediumLevelILVarOutputSsaRec (..),
+    MediumLevelILVarOutputSsaFieldRec (..),
+    MediumLevelILVarOutputAliasedRec (..),
+    MediumLevelILVarOutputAliasedFieldRec (..),
     MediumLevelILConstPtrRec (..),
     MediumLevelILNopRec (..),
     MediumLevelILRetRec (..),
@@ -122,6 +125,8 @@ module Binja.Types
     MediumLevelILImportRec (..),
     MediumLevelILAddressOfRec (..),
     MediumLevelILAddressOfFieldRec (..),
+    MediumLevelILPassByRefRec (..),
+    MediumLevelILReturnByRefRec (..),
     MediumLevelILLoadSsaRec (..),
     MediumLevelILConstRec (..),
     MediumLevelILIfRec (..),
@@ -235,6 +240,9 @@ module Binja.Types
     MediumLevelILCallUntypedRec (..),
     MediumLevelILSeparateParamListRec (..),
     MediumLevelILSharedParamSlotRec (..),
+    MediumLevelILVarOutputRec (..),
+    MediumLevelILVarOutputFieldRec (..),
+    MediumLevelILStoreOutputRec (..),
     MediumLevelILSyscallRec (..),
     MediumLevelILSyscallUntypedRec (..),
     MediumLevelILTailcallRec (..),
@@ -248,6 +256,18 @@ module Binja.Types
     MediumLevelILFreeVarSlotSsaRec (..),
     MediumLevelILVarPhiRec (..),
     MediumLevelILMemPhiRec (..),
+    MediumLevelILBlockToExpandRec (..),
+    MediumLevelILBswapRec (..),
+    MediumLevelILPopcntRec (..),
+    MediumLevelILClzRec (..),
+    MediumLevelILCtzRec (..),
+    MediumLevelILRbitRec (..),
+    MediumLevelILClsRec (..),
+    MediumLevelILMinsRec (..),
+    MediumLevelILMaxsRec (..),
+    MediumLevelILMinuRec (..),
+    MediumLevelILMaxuRec (..),
+    MediumLevelILAbsRec (..),
     CFGContext (..),
   )
 where
@@ -879,6 +899,17 @@ data BNLowLevelILOperation
   | LLIL_REG_STACK_PHI
   | LLIL_FLAG_PHI
   | LLIL_MEM_PHI
+  | LLIL_BSWAP
+  | LLIL_POPCNT
+  | LLIL_CLZ
+  | LLIL_CTZ
+  | LLIL_RBIT
+  | LLIL_CLS
+  | LLIL_MINS
+  | LLIL_MAXS
+  | LLIL_MINU
+  | LLIL_MAXU
+  | LLIL_ABS
   deriving (Eq, Show, Enum)
 
 data BNMediumLevelILOperation
@@ -897,6 +928,8 @@ data BNMediumLevelILOperation
   | MLIL_VAR_SPLIT
   | MLIL_ADDRESS_OF
   | MLIL_ADDRESS_OF_FIELD
+  | MLIL_PASS_BY_REF
+  | MLIL_RETURN_BY_REF
   | MLIL_CONST
   | MLIL_CONST_DATA
   | MLIL_CONST_PTR
@@ -938,10 +971,12 @@ data BNMediumLevelILOperation
   | MLIL_RET_HINT
   | MLIL_CALL
   | MLIL_CALL_UNTYPED
-  | MLIL_CALL_OUTPUT
   | MLIL_CALL_PARAM
   | MLIL_SEPARATE_PARAM_LIST
   | MLIL_SHARED_PARAM_SLOT
+  | MLIL_VAR_OUTPUT
+  | MLIL_VAR_OUTPUT_FIELD
+  | MLIL_STORE_OUTPUT
   | MLIL_RET
   | MLIL_NORET
   | MLIL_IF
@@ -1012,6 +1047,10 @@ data BNMediumLevelILOperation
   | MLIL_TAILCALL_UNTYPED_SSA
   | MLIL_CALL_PARAM_SSA
   | MLIL_CALL_OUTPUT_SSA
+  | MLIL_VAR_OUTPUT_SSA
+  | MLIL_VAR_OUTPUT_SSA_FIELD
+  | MLIL_VAR_OUTPUT_ALIASED
+  | MLIL_VAR_OUTPUT_ALIASED_FIELD
   | MLIL_MEMORY_INTRINSIC_OUTPUT_SSA
   | MLIL_LOAD_SSA
   | MLIL_LOAD_STRUCT_SSA
@@ -1022,6 +1061,18 @@ data BNMediumLevelILOperation
   | MLIL_FREE_VAR_SLOT_SSA
   | MLIL_VAR_PHI
   | MLIL_MEM_PHI
+  | MLIL_BLOCK_TO_EXPAND
+  | MLIL_BSWAP
+  | MLIL_POPCNT
+  | MLIL_CLZ
+  | MLIL_CTZ
+  | MLIL_RBIT
+  | MLIL_CLS
+  | MLIL_MINS
+  | MLIL_MAXS
+  | MLIL_MINU
+  | MLIL_MAXU
+  | MLIL_ABS
   deriving (Eq, Ord, Show, Enum)
 
 data BNMediumLevelILInstruction = BNMediumLevelILInstruction
@@ -37487,8 +37538,32 @@ data MediumLevelILCallOutputSsaRec = MediumLevelILCallOutputSsaRec
   }
   deriving (Show, Eq, Ord)
 
-data MediumLevelILCallOutputRec = MediumLevelILCallOutputRec
-  { dest :: [BNVariable],
+data MediumLevelILVarOutputSsaRec = MediumLevelILVarOutputSsaRec
+  { dest :: BNSSAVariable,
+    var :: BNSSAVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputSsaFieldRec = MediumLevelILVarOutputSsaFieldRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputAliasedRec = MediumLevelILVarOutputAliasedRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputAliasedFieldRec = MediumLevelILVarOutputAliasedFieldRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    offset :: Int,
     core :: CoreMediumLevelILInstruction
   }
   deriving (Show, Eq, Ord)
@@ -37569,6 +37644,18 @@ data MediumLevelILAddressOfRec = MediumLevelILAddressOfRec
 data MediumLevelILAddressOfFieldRec = MediumLevelILAddressOfFieldRec
   { src :: BNVariable,
     offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILPassByRefRec = MediumLevelILPassByRefRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILReturnByRefRec = MediumLevelILReturnByRefRec
+  { src :: MediumLevelILSSAInstruction,
     core :: CoreMediumLevelILInstruction
   }
   deriving (Show, Eq, Ord)
@@ -38349,6 +38436,25 @@ data MediumLevelILSharedParamSlotRec = MediumLevelILSharedParamSlotRec
   }
   deriving (Show, Eq, Ord)
 
+data MediumLevelILVarOutputRec = MediumLevelILVarOutputRec
+  { dest :: BNVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputFieldRec = MediumLevelILVarOutputFieldRec
+  { dest :: BNVariable,
+    offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILStoreOutputRec = MediumLevelILStoreOutputRec
+  { dest :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
 data MediumLevelILSyscallRec = MediumLevelILSyscallRec
   { output :: [BNVariable],
     params :: [MediumLevelILSSAInstruction],
@@ -38454,6 +38560,82 @@ data MediumLevelILMemPhiRec = MediumLevelILMemPhiRec
   }
   deriving (Show, Eq, Ord)
 
+data MediumLevelILBlockToExpandRec = MediumLevelILBlockToExpandRec
+  { exprs :: [MediumLevelILSSAInstruction],
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILBswapRec = MediumLevelILBswapRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILPopcntRec = MediumLevelILPopcntRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILClzRec = MediumLevelILClzRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILCtzRec = MediumLevelILCtzRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILRbitRec = MediumLevelILRbitRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILClsRec = MediumLevelILClsRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMinsRec = MediumLevelILMinsRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMaxsRec = MediumLevelILMaxsRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMinuRec = MediumLevelILMinuRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMaxuRec = MediumLevelILMaxuRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILAbsRec = MediumLevelILAbsRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
 data Localcall
   = MediumLevelILCall MediumLevelILCallRec
   | MediumLevelILCallSsa MediumLevelILCallSsaRec
@@ -38528,6 +38710,17 @@ data Arithmetic
   | MediumLevelILFsub MediumLevelILFsubRec
   | MediumLevelILFmul MediumLevelILFmulRec
   | MediumLevelILFdiv MediumLevelILFdivRec
+  | MediumLevelILBswap MediumLevelILBswapRec
+  | MediumLevelILPopcnt MediumLevelILPopcntRec
+  | MediumLevelILClz MediumLevelILClzRec
+  | MediumLevelILCtz MediumLevelILCtzRec
+  | MediumLevelILRbit MediumLevelILRbitRec
+  | MediumLevelILCls MediumLevelILClsRec
+  | MediumLevelILMins MediumLevelILMinsRec
+  | MediumLevelILMaxs MediumLevelILMaxsRec
+  | MediumLevelILMinu MediumLevelILMinuRec
+  | MediumLevelILMaxu MediumLevelILMaxuRec
+  | MediumLevelILAbs MediumLevelILAbsRec
   deriving (Show, Eq, Ord)
 
 data Terminal
@@ -38574,6 +38767,7 @@ data Store
   | MediumLevelILStoreStruct MediumLevelILStoreStructRec
   | MediumLevelILStoreSsa MediumLevelILStoreSsaRec
   | MediumLevelILStoreStructSsa MediumLevelILStoreStructSsaRec
+  | MediumLevelILStoreOutput MediumLevelILStoreOutputRec
   deriving (Show, Eq, Ord)
 
 data Memory
@@ -38598,11 +38792,16 @@ data SetVar
   | MediumLevelILSetVarAliasedField MediumLevelILSetVarAliasedFieldRec
   | MediumLevelILSetVarField MediumLevelILSetVarFieldRec
   | MediumLevelILSetVarSplit MediumLevelILSetVarSplitRec
+  | MediumLevelILVarOutputField MediumLevelILVarOutputFieldRec
+  | MediumLevelILVarOutputSsaField MediumLevelILVarOutputSsaFieldRec
+  | MediumLevelILVarOutputAliased MediumLevelILVarOutputAliasedRec
+  | MediumLevelILVarOutputAliasedField MediumLevelILVarOutputAliasedFieldRec
   deriving (Show, Eq, Ord)
 
 data RegisterStack
   = MediumLevelILFreeVarSlot MediumLevelILFreeVarSlotRec
   | MediumLevelILFreeVarSlotSsa MediumLevelILFreeVarSlotSsaRec
+  | MediumLevelILVarOutput MediumLevelILVarOutputRec
   deriving (Show, Eq, Ord)
 
 data VariableInstruction
@@ -38639,13 +38838,14 @@ data MediumLevelILSSAInstruction
   | RegisterStack RegisterStack
   | IntrinsicInstruction IntrinsicInstruction
   | MediumLevelILCallOutputSsa MediumLevelILCallOutputSsaRec
-  | MediumLevelILCallOutput MediumLevelILCallOutputRec
   | MediumLevelILMemoryIntrinsicOutputSsa MediumLevelILMemoryIntrinsicOutputSsaRec
   | MediumLevelILCallParamSsa MediumLevelILCallParamSsaRec
   | MediumLevelILCallParam MediumLevelILCallParamRec
   | MediumLevelILNop MediumLevelILNopRec
   | MediumLevelILAddressOf MediumLevelILAddressOfRec
   | MediumLevelILAddressOfField MediumLevelILAddressOfFieldRec
+  | MediumLevelILPassByRef MediumLevelILPassByRefRec
+  | MediumLevelILReturnByRef MediumLevelILReturnByRefRec
   | MediumLevelILMuluDp MediumLevelILMuluDpRec
   | MediumLevelILMulsDp MediumLevelILMulsDpRec
   | MediumLevelILDivuDp MediumLevelILDivuDpRec
@@ -38663,4 +38863,6 @@ data MediumLevelILSSAInstruction
   | MediumLevelILUnimpl MediumLevelILUnimplRec
   | MediumLevelILSeparateParamList MediumLevelILSeparateParamListRec
   | MediumLevelILSharedParamSlot MediumLevelILSharedParamSlotRec
+  | MediumLevelILVarOutputSsa MediumLevelILVarOutputSsaRec
+  | MediumLevelILBlockToExpand MediumLevelILBlockToExpandRec
   deriving (Show, Eq, Ord)
