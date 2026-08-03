@@ -898,7 +898,6 @@ create func exprIndex' = do
     MLIL_CALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        -- MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
@@ -1142,7 +1141,6 @@ create func exprIndex' = do
     MLIL_SYSCALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        -- MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILSyscallUntyped: expected MediumLevelILCallOutput : "
@@ -1178,7 +1176,6 @@ create func exprIndex' = do
     MLIL_TAILCALL_UNTYPED -> do
       outputInst <- getExpr func $ getOp rawInst 0
       output' <- case outputInst of
-        -- MediumLevelILCallOutput (MediumLevelILCallOutputRec {dest = d}) -> pure d
         _ ->
           error $
             "create: Output of MediumLevelILTailCallUntyped: expected MediumLevelILCallOutput : "

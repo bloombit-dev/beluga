@@ -8,7 +8,7 @@ import Control.Monad (forM_)
 
 macOSfilenames :: [String]
 macOSfilenames =
-  [ "./test/macos/cmake.arm64.bndb",
+  [ "./test/macos/cmake",
     "./test/macos/libsignal-client.node",
     "./test/macos/d8",
     "./test/macos/sudo.bndb",
@@ -22,7 +22,7 @@ macOSfilenames =
     "./test/macos/FaceTime",
     "./test/macos/Compressor",
     "./test/macos/World_of_Warcraft_Classic",
-    "./test/macos/webkit-304137@main/libANGLE-shared.dylib.bndb",
+    "./test/macos/webkit-304137@main/libANGLE-shared.dylib",
     "./test/macos/webkit-304137@main/minidom",
     "./test/macos/webkit-304137@main/libWebCoreTestSupport.dylib",
     "./test/macos/webkit-304137@main/libwebrtc.dylib"
