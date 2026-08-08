@@ -438,7 +438,9 @@ getArch str = do
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
     "hexagon" -> pure Hexagon
-    "mips" -> pure Mips
+    "rv32gc" -> pure Rv32gc
+    "rv32gc_wch" -> pure Rv32gcWCH
+    "rv64gc" -> pure Rv64gc
     _ -> error $ "Unimplemented architecture: " ++ str
 
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
@@ -450,6 +452,9 @@ getIntrinsic arch' index' = do
         else pure $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
     X86 -> pure $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
     Hexagon -> pure $ IntrinsicHexagon (toEnum $ fromIntegral index' :: HexagonIntrinsic)
+    Rv32gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv32gcWCH -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv64gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
 
 data BNBranchType
   = UnconditionalBranch
@@ -529,7 +534,13 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
 
-data Architecture = Arm64 | X86 | Hexagon
+data Architecture
+  = Arm64
+  | X86
+  | Hexagon
+  | Rv32gc
+  | Rv32gcWCH
+  | Rv64gc
   deriving (Show, Eq, Ord)
 
 data Intrinsic
@@ -537,6 +548,7 @@ data Intrinsic
   | IntrinsicArmNeon ArmNeonIntrinsic
   | IntrinsicX86 X86Intrinsic
   | IntrinsicHexagon HexagonIntrinsic
+  | IntrinsicRiscv RiscvIntrinsic
   deriving (Show, Eq, Ord)
 
 data BNPossibleValueSet = BNPossibleValueSet
@@ -37699,6 +37711,40 @@ data HexagonIntrinsic
   | HEXAGON_SHUFFEH
   | HEXAGON_SHUFFOH
   | HEXAGON_VACSH
+  deriving (Show, Eq, Ord, Enum)
+
+data RiscvIntrinsic
+  = RISCV_SRET
+  | RISCV_MRET
+  | RISCV_WFI
+  | RISCV_CSRRW
+  | RISCV_CSRWR
+  | RISCV_CSRRD
+  | RISCV_CSRRS
+  | RISCV_CSRRC
+  | RISCV_FADD
+  | RISCV_FSUB
+  | RISCV_FMUL
+  | RISCV_FDIV
+  | RISCV_FSQRT
+  | RISCV_FSGNJ
+  | RISCV_FSGNJN
+  | RISCV_FSGNJX
+  | RISCV_FMIN
+  | RISCV_FMAX
+  | RISCV_FCLASS
+  | RISCV_FCVTFTOF
+  | RISCV_FCVTITOF
+  | RISCV_FCVTFTOI
+  | RISCV_FCVTUTOF
+  | RISCV_FCVTFTOU
+  | RISCV_FENCE
+  | RISCV_CLZ
+  | RISCV_CTZ
+  | RISCV_POPCOUNT
+  | RISCV_ORCOMBINE
+  | RISCV_REV8
+  | RISCV_WCHMCPY
   deriving (Show, Eq, Ord, Enum)
 
 data CoreMediumLevelILInstruction = CoreMediumLevelILInstruction
