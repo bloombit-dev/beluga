@@ -438,6 +438,7 @@ getArch str = do
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
     "hexagon" -> pure Hexagon
+    "mips" -> pure Mips
     _ -> error $ "Unimplemented architecture: " ++ str
 
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
@@ -37514,6 +37515,8 @@ instance Enum X86Intrinsic where
   toEnum 9060 = INTRINSIC_LAST
   toEnum n = error $ "X86 Intrinsic toEnum: invalid value: " ++ show n
 
+-- | Note the hexagon plugin is closed source so it's difficult to track changes to
+--   these hexagon intrinsics. The following was provided by vector35 August 8th, 2026
 data HexagonIntrinsic
   = HEXAGON_READSR
   | HEXAGON_ISYNC
