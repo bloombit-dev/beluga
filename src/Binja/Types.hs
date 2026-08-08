@@ -438,7 +438,9 @@ getArch str = do
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
     "hexagon" -> pure Hexagon
-    "riscv" -> pure Riscv
+    "rv32gc" -> pure Rv32gc
+    "rv32gc_wch" -> pure Rv32gcWCH
+    "rv64gc" -> pure Rv64gc
     _ -> error $ "Unimplemented architecture: " ++ str
 
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
@@ -450,7 +452,9 @@ getIntrinsic arch' index' = do
         else pure $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
     X86 -> pure $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
     Hexagon -> pure $ IntrinsicHexagon (toEnum $ fromIntegral index' :: HexagonIntrinsic)
-    Riscv -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv32gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv32gcWCH -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv64gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
 
 data BNBranchType
   = UnconditionalBranch
@@ -530,7 +534,13 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
 
-data Architecture = Arm64 | X86 | Hexagon | Riscv
+data Architecture
+  = Arm64
+  | X86
+  | Hexagon
+  | Rv32gc
+  | Rv32gcWCH
+  | Rv64gc
   deriving (Show, Eq, Ord)
 
 data Intrinsic
