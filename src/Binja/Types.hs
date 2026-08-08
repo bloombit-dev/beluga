@@ -448,7 +448,7 @@ getArch str = do
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
 getIntrinsic arch' index' = do
   case arch' of
-    -- \| Note thumb2 intrinsics are a subset of armv7 intrinsics
+    -- | Note thumb2 intrinsics are a subset of armv7 intrinsics
     Thumb2 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Armv7 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Arm64 ->
