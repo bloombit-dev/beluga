@@ -6,6 +6,56 @@ import Binja.Types
 import Binja.Utils
 import Control.Monad (forM_)
 
+armv7Filenames :: [String]
+armv7Filenames =
+  [ "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libcuda.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvcuvid.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libOpenGL.so.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libEGL_nvidia.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-cfg.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libvdpau_nvidia.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libEGL.so.1.1.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-egl-wayland.so.1.0.2",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/mkprecompiled",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libEGL.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-eglcore.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia_drv.so",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGL.so.1.7.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-encode.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-cuda-mps-control",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGL.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-fatbinaryloader.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-cuda-mps-server",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLdispatch.so.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-fbc.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-debugdump",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLESv1_CM_nvidia.so.390.157",
+    -- "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-glcore.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-installer",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLESv1_CM.so.1.2.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-glsi.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-modprobe",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLESv2_nvidia.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-gtk2.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-persistenced",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLESv2.so.2.1.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-ifr.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-settings",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLX_nvidia.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-ml.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-smi",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libGLX.so.0",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-ptxjitcompiler.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/nvidia-xconfig",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libglx.so.390.157",
+    "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libnvidia-tls.so.390.157"
+  ]
+
+hexagonFilenames :: [String]
+hexagonFilenames =
+  [ "./test/qcadsp8380.mbn"
+  ]
+
 macOSfilenames :: [String]
 macOSfilenames =
   [ "./test/macos/cmake",
@@ -782,7 +832,7 @@ main = do
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
-  forM_ pixelTeguVendorModulesFilenames $ \fname -> do
+  forM_ armv7Filenames $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
     summary' <- summary context
