@@ -445,6 +445,15 @@ getArch str = do
     "rv32gc" -> pure Rv32gc
     "rv32gc_wch" -> pure Rv32gcWCH
     "rv64gc" -> pure Rv64gc
+    "mipsel32" -> pure Mipsel32
+    "mips32" -> pure Mips32
+    "r5900l" -> pure R5900l
+    "mips3" -> pure Mips3
+    "mipsel3" -> pure Mipsel3
+    "mipsel64" -> pure Mipsel64
+    "mips64" -> pure Mips64
+    "cavium-mips64" -> pure CaviumMips64
+    "cavium-mipsel64" -> pure CaviumMipsel64
     _ -> error $ "Unimplemented architecture: " ++ str
 
 -- | Note: Thumb2, Armv7 and big endian variants share the same set of intrinsics
@@ -464,6 +473,15 @@ getIntrinsic arch' index' = do
     Rv32gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
     Rv32gcWCH -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
     Rv64gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Mipsel32 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips32 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    R5900l -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips3 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mipsel3 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mipsel64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    CaviumMips64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    CaviumMipsel64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
 
 data BNBranchType
   = UnconditionalBranch
