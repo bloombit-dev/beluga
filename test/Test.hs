@@ -6,6 +6,88 @@ import Binja.Types
 import Binja.Utils
 import Control.Monad (forM_)
 
+mipsFilenames :: [String]
+mipsFilenames =
+  [ "./test/mips/addr2line",
+    "./test/mips/atftpd",
+    "./test/mips/cryptcat",
+    "./test/mips/luac",
+    "./test/mips/ranlib",
+    "./test/mips/sshd",
+    "./test/mips/aespipe",
+    "./test/mips/autossh",
+    "./test/mips/curl",
+    "./test/mips/makeivs-ng",
+    "./test/mips/readelf",
+    "./test/mips/strings",
+    "./test/mips/airbase-ng",
+    "./test/mips/axel",
+    "./test/mips/cxxfilt",
+    "./test/mips/netcat",
+    "./test/mips/scp",
+    "./test/mips/strip-new",
+    "./test/mips/aircrack-ng",
+    "./test/mips/bash",
+    "./test/mips/dbd-generic",
+    "./test/mips/ngircd",
+    "./test/mips/sftp",
+    "./test/mips/synflood",
+    "./test/mips/airdecap-ng",
+    "./test/mips/besside-ng",
+    "./test/mips/dnsmasq",
+    "./test/mips/nm-new",
+    "./test/mips/sftp-server",
+    "./test/mips/sysinfo",
+    "./test/mips/airdecloak-ng",
+    "./test/mips/besside-ng-crawler",
+    "./test/mips/dropbearmulti",
+    "./test/mips/nmap",
+    "./test/mips/size",
+    "./test/mips/tcpdump",
+    "./test/mips/aireplay-ng",
+    "./test/mips/bfdtest1",
+    "./test/mips/easside-ng",
+    "./test/mips/objcopy",
+    "./test/mips/socat",
+    "./test/mips/tkiptun-ng",
+    "./test/mips/airodump-ng",
+    "./test/mips/bfdtest2",
+    "./test/mips/elfedit",
+    "./test/mips/objdump",
+    "./test/mips/ssh",
+    "./test/mips/tor",
+    "./test/mips/airserv-ng",
+    "./test/mips/buddy-ng",
+    "./test/mips/htop",
+    "./test/mips/openssl",
+    "./test/mips/ssh-add",
+    "./test/mips/transmission-daemon",
+    "./test/mips/airtun-ng",
+    "./test/mips/busybox-mips",
+    "./test/mips/ivstools",
+    "./test/mips/openvpn",
+    "./test/mips/ssh-keygen",
+    "./test/mips/wesside-ng",
+    "./test/mips/ar",
+    "./test/mips/ccrypt",
+    "./test/mips/kstats",
+    "./test/mips/packetforge-ng",
+    "./test/mips/ssh-keyscan",
+    "./test/mips/wget",
+    "./test/mips/arptables",
+    "./test/mips/config.status",
+    "./test/mips/libtool",
+    "./test/mips/proxychains4",
+    "./test/mips/ssh-keysign",
+    "./test/mips/wpaclean",
+    "./test/mips/atftp",
+    "./test/mips/configure",
+    "./test/mips/lua",
+    "./test/mips/python",
+    "./test/mips/ssh-pkcs11-helper",
+    "./test/mips/xtables-multi"
+  ]
+
 armv7Filenames :: [String]
 armv7Filenames =
   [ "./test/armv7/NVIDIA-Linux-armv7l-gnueabihf-390.157/libcuda.so.390.157",
@@ -832,7 +914,7 @@ main = do
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
-  forM_ armv7Filenames $ \fname -> do
+  forM_ mipsFilenames $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
     summary' <- summary context
