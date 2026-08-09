@@ -436,7 +436,9 @@ getArch :: String -> IO Architecture
 getArch str = do
   case str of
     "thumb2" -> pure Thumb2
+    "thumb2eb" -> pure Thumb2eb
     "armv7" -> pure Armv7
+    "armv7eb" -> pure Armv7eb
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
     "hexagon" -> pure Hexagon
@@ -448,9 +450,11 @@ getArch str = do
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
 getIntrinsic arch' index' = do
   case arch' of
-    -- | Note thumb2 intrinsics are a subset of armv7 intrinsics
+    -- \| Note thumb2 intrinsics are a subset of armv7 intrinsics
     Thumb2 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
+    Thumb2eb -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Armv7 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
+    Armv7eb -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Arm64 ->
       if index' < 54
         then pure $ IntrinsicArm64 (toEnum $ fromIntegral index' :: Arm64Intrinsic)
@@ -541,7 +545,9 @@ instance Storable BNBasicBlockEdge where
 
 data Architecture
   = Thumb2
+  | Thumb2eb
   | Armv7
+  | Armv7eb
   | Arm64
   | X86
   | Hexagon
