@@ -447,10 +447,10 @@ getArch str = do
     "rv64gc" -> pure Rv64gc
     _ -> error $ "Unimplemented architecture: " ++ str
 
+-- | Note: Thumb2, Armv7 and big endian variants share the same set of intrinsics
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
 getIntrinsic arch' index' = do
   case arch' of
-    -- \| Note thumb2 intrinsics are a subset of armv7 intrinsics
     Thumb2 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Thumb2eb -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Armv7 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
