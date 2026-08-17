@@ -26,6 +26,7 @@ module Binja.AnalysisContext
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
+    Binja.AnalysisContext.summary,
     Binja.AnalysisContext.close,
   )
 where
@@ -35,6 +36,7 @@ import Binja.ControlFlowGraph
 import Binja.Function
 import Binja.Mlil
 import Binja.Types
+import Binja.Utils
 import Data.Map as Map
 import Data.Maybe (catMaybes)
 import Data.Set as Set
@@ -57,8 +59,8 @@ create ::
   -- | Options in json format
   String ->
   IO AnalysisContext
-create filename options = do
-  viewHandle' <- Binja.BinaryView.load filename options
+create filename' options = do
+  viewHandle' <- Binja.BinaryView.load filename' options
   functions' <- Binja.BinaryView.functions viewHandle'
   functionContexts <- mapM createFunctionContext functions'
   entryFunction' <- Binja.BinaryView.entryFunction viewHandle'
@@ -70,6 +72,7 @@ create filename options = do
   pure
     AnalysisContext
       { viewHandle = viewHandle',
+        filename = filename',
         functions = functionContexts,
         entryFunction = entryFunctionContext,
         entryFunctions = entryFunctionContexts,
@@ -189,3 +192,55 @@ callers analysisContext functionContext =
 --  Suggested pattern: <https://wiki.haskell.org/Bracket_pattern Bracket Pattern>
 close :: AnalysisContext -> IO ()
 close = Binja.BinaryView.close . viewHandle
+
+-- |
+-- Returns a string summary of values contained in an analysis context
+-- including basic block count, function count, etc.
+summary :: AnalysisContext -> IO String
+summary analysisContext = do
+  colors <- Binja.Utils.getColors
+  let functionCount = magenta colors $ show $ length $ Binja.Types.functions analysisContext
+      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
+      entryFunction' =
+        case Binja.Types.entryFunction analysisContext of
+          Nothing -> magenta colors $ "No entry function."
+          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.symbol f)
+      entryFunctions' = magenta colors $ show $ length $ Binja.Types.entryFunctions analysisContext
+      stringCount = magenta colors $ show $ length $ Binja.Types.strings analysisContext
+      symbolCount = magenta colors $ show $ length $ Binja.Types.symbols analysisContext
+  pure $
+    " ["
+      ++ (green colors) "+"
+      ++ "] Filename: "
+      ++ (magenta colors $ filename analysisContext)
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Function count: "
+      ++ functionCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Mlil basic block count: "
+      ++ bbCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry Function: "
+      ++ entryFunction'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry Functions count: "
+      ++ entryFunctions'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] String count: "
+      ++ stringCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Symbol count: "
+      ++ symbolCount
+      ++ "\n"

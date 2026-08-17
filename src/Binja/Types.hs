@@ -110,7 +110,10 @@ module Binja.Types
     IntrinsicInstruction (..),
     MediumLevelILCallSsaRec (..),
     MediumLevelILCallOutputSsaRec (..),
-    MediumLevelILCallOutputRec (..),
+    MediumLevelILVarOutputSsaRec (..),
+    MediumLevelILVarOutputSsaFieldRec (..),
+    MediumLevelILVarOutputAliasedRec (..),
+    MediumLevelILVarOutputAliasedFieldRec (..),
     MediumLevelILConstPtrRec (..),
     MediumLevelILNopRec (..),
     MediumLevelILRetRec (..),
@@ -122,6 +125,8 @@ module Binja.Types
     MediumLevelILImportRec (..),
     MediumLevelILAddressOfRec (..),
     MediumLevelILAddressOfFieldRec (..),
+    MediumLevelILPassByRefRec (..),
+    MediumLevelILReturnByRefRec (..),
     MediumLevelILLoadSsaRec (..),
     MediumLevelILConstRec (..),
     MediumLevelILIfRec (..),
@@ -235,6 +240,9 @@ module Binja.Types
     MediumLevelILCallUntypedRec (..),
     MediumLevelILSeparateParamListRec (..),
     MediumLevelILSharedParamSlotRec (..),
+    MediumLevelILVarOutputRec (..),
+    MediumLevelILVarOutputFieldRec (..),
+    MediumLevelILStoreOutputRec (..),
     MediumLevelILSyscallRec (..),
     MediumLevelILSyscallUntypedRec (..),
     MediumLevelILTailcallRec (..),
@@ -248,6 +256,18 @@ module Binja.Types
     MediumLevelILFreeVarSlotSsaRec (..),
     MediumLevelILVarPhiRec (..),
     MediumLevelILMemPhiRec (..),
+    MediumLevelILBlockToExpandRec (..),
+    MediumLevelILBswapRec (..),
+    MediumLevelILPopcntRec (..),
+    MediumLevelILClzRec (..),
+    MediumLevelILCtzRec (..),
+    MediumLevelILRbitRec (..),
+    MediumLevelILClsRec (..),
+    MediumLevelILMinsRec (..),
+    MediumLevelILMaxsRec (..),
+    MediumLevelILMinuRec (..),
+    MediumLevelILMaxuRec (..),
+    MediumLevelILAbsRec (..),
     CFGContext (..),
   )
 where
@@ -273,6 +293,7 @@ import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (FunPtr, Ptr, nullFunPtr, nullPtr)
 import GHC.Float (castWord32ToFloat, castWord64ToDouble, float2Double)
 import GHC.ForeignPtr (ForeignPtr)
+import Numeric (showHex)
 
 pointerSize :: Int
 pointerSize = sizeOf (undefined :: Ptr ())
@@ -363,6 +384,8 @@ data CFGContext = CFGContext
 data AnalysisContext = AnalysisContext
   { -- | Binary View pointer which is the greatest common ancestor for all other types.
     viewHandle :: BNBinaryViewPtr,
+    -- | Path to file used to derive AnalysisContext
+    filename :: String,
     functions :: [FunctionContext],
     entryFunction :: Maybe FunctionContext,
     -- | List of entry functions like init_array, fini_array, TLS callbacks, etc.
@@ -370,10 +393,10 @@ data AnalysisContext = AnalysisContext
     entryFunctions :: [FunctionContext],
     symbols :: [Symbol],
     strings :: [String]
+    -- image base :: Word64
     -- sections :: [Section]
     -- segments :: [Segment]
   }
-  deriving (Show)
 
 -- | Higher level abstraction of a medium level IL SSA variant function
 data FunctionContext = FunctionContext
@@ -412,18 +435,53 @@ data ILIntrinsic = ILIntrinsic
 getArch :: String -> IO Architecture
 getArch str = do
   case str of
+    "thumb2" -> pure Thumb2
+    "thumb2eb" -> pure Thumb2eb
+    "armv7" -> pure Armv7
+    "armv7eb" -> pure Armv7eb
     "aarch64" -> pure Arm64
     "x86_64" -> pure X86
+    "hexagon" -> pure Hexagon
+    "rv32gc" -> pure Rv32gc
+    "rv32gc_wch" -> pure Rv32gcWCH
+    "rv64gc" -> pure Rv64gc
+    "mipsel32" -> pure Mipsel32
+    "mips32" -> pure Mips32
+    "r5900l" -> pure R5900l
+    "mips3" -> pure Mips3
+    "mipsel3" -> pure Mipsel3
+    "mipsel64" -> pure Mipsel64
+    "mips64" -> pure Mips64
+    "cavium-mips64" -> pure CaviumMips64
+    "cavium-mipsel64" -> pure CaviumMipsel64
     _ -> error $ "Unimplemented architecture: " ++ str
 
+-- | Note: Thumb2, Armv7 and big endian variants share the same set of intrinsics
 getIntrinsic :: Architecture -> CSize -> IO Intrinsic
 getIntrinsic arch' index' = do
   case arch' of
+    Thumb2 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
+    Thumb2eb -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
+    Armv7 -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
+    Armv7eb -> pure $ IntrinsicArmv7 (toEnum $ fromIntegral index' :: Armv7Intrinsic)
     Arm64 ->
       if index' < 54
         then pure $ IntrinsicArm64 (toEnum $ fromIntegral index' :: Arm64Intrinsic)
         else pure $ IntrinsicArmNeon (toEnum $ fromIntegral index' :: ArmNeonIntrinsic)
     X86 -> pure $ IntrinsicX86 (toEnum $ fromIntegral index' :: X86Intrinsic)
+    Hexagon -> pure $ IntrinsicHexagon (toEnum $ fromIntegral index' :: HexagonIntrinsic)
+    Rv32gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv32gcWCH -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Rv64gc -> pure $ IntrinsicRiscv (toEnum $ fromIntegral index' :: RiscvIntrinsic)
+    Mipsel32 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips32 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    R5900l -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips3 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mipsel3 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mipsel64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    Mips64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    CaviumMips64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
+    CaviumMipsel64 -> pure $ IntrinsicMips (toEnum $ fromIntegral index' :: MipsIntrinsic)
 
 data BNBranchType
   = UnconditionalBranch
@@ -503,13 +561,36 @@ instance Storable BNBasicBlockEdge where
     pokeByteOff ptr 16 backEdge'
     pokeByteOff ptr 17 fallThrough'
 
-data Architecture = Arm64 | X86
+data Architecture
+  = Thumb2
+  | Thumb2eb
+  | Armv7
+  | Armv7eb
+  | Arm64
+  | X86
+  | Hexagon
+  | Mipsel32
+  | Mips32
+  | R5900l
+  | Mips3
+  | Mipsel3
+  | Mipsel64
+  | Mips64
+  | CaviumMips64
+  | CaviumMipsel64
+  | Rv32gc
+  | Rv32gcWCH
+  | Rv64gc
   deriving (Show, Eq, Ord)
 
 data Intrinsic
-  = IntrinsicArm64 Arm64Intrinsic
+  = IntrinsicArmv7 Armv7Intrinsic
+  | IntrinsicArm64 Arm64Intrinsic
   | IntrinsicArmNeon ArmNeonIntrinsic
   | IntrinsicX86 X86Intrinsic
+  | IntrinsicHexagon HexagonIntrinsic
+  | IntrinsicMips MipsIntrinsic
+  | IntrinsicRiscv RiscvIntrinsic
   deriving (Show, Eq, Ord)
 
 data BNPossibleValueSet = BNPossibleValueSet
@@ -666,7 +747,21 @@ data Symbol = Symbol
     address :: Word64,
     auto :: Bool
   }
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Symbol where
+  show (Symbol name' ty' binding' address' auto') =
+    "Symbol {name = "
+      ++ show name'
+      ++ ", ty = "
+      ++ show ty'
+      ++ ", binding = "
+      ++ show binding'
+      ++ ", address = 0x"
+      ++ showHex address' ""
+      ++ ", auto = "
+      ++ show auto'
+      ++ "}"
 
 data BNStringType = AsciiString | Utf16String | Utf32String | Utf8String
   deriving (Eq, Show, Enum)
@@ -862,6 +957,17 @@ data BNLowLevelILOperation
   | LLIL_REG_STACK_PHI
   | LLIL_FLAG_PHI
   | LLIL_MEM_PHI
+  | LLIL_BSWAP
+  | LLIL_POPCNT
+  | LLIL_CLZ
+  | LLIL_CTZ
+  | LLIL_RBIT
+  | LLIL_CLS
+  | LLIL_MINS
+  | LLIL_MAXS
+  | LLIL_MINU
+  | LLIL_MAXU
+  | LLIL_ABS
   deriving (Eq, Show, Enum)
 
 data BNMediumLevelILOperation
@@ -880,6 +986,8 @@ data BNMediumLevelILOperation
   | MLIL_VAR_SPLIT
   | MLIL_ADDRESS_OF
   | MLIL_ADDRESS_OF_FIELD
+  | MLIL_PASS_BY_REF
+  | MLIL_RETURN_BY_REF
   | MLIL_CONST
   | MLIL_CONST_DATA
   | MLIL_CONST_PTR
@@ -921,10 +1029,12 @@ data BNMediumLevelILOperation
   | MLIL_RET_HINT
   | MLIL_CALL
   | MLIL_CALL_UNTYPED
-  | MLIL_CALL_OUTPUT
   | MLIL_CALL_PARAM
   | MLIL_SEPARATE_PARAM_LIST
   | MLIL_SHARED_PARAM_SLOT
+  | MLIL_VAR_OUTPUT
+  | MLIL_VAR_OUTPUT_FIELD
+  | MLIL_STORE_OUTPUT
   | MLIL_RET
   | MLIL_NORET
   | MLIL_IF
@@ -995,6 +1105,10 @@ data BNMediumLevelILOperation
   | MLIL_TAILCALL_UNTYPED_SSA
   | MLIL_CALL_PARAM_SSA
   | MLIL_CALL_OUTPUT_SSA
+  | MLIL_VAR_OUTPUT_SSA
+  | MLIL_VAR_OUTPUT_SSA_FIELD
+  | MLIL_VAR_OUTPUT_ALIASED
+  | MLIL_VAR_OUTPUT_ALIASED_FIELD
   | MLIL_MEMORY_INTRINSIC_OUTPUT_SSA
   | MLIL_LOAD_SSA
   | MLIL_LOAD_STRUCT_SSA
@@ -1005,6 +1119,18 @@ data BNMediumLevelILOperation
   | MLIL_FREE_VAR_SLOT_SSA
   | MLIL_VAR_PHI
   | MLIL_MEM_PHI
+  | MLIL_BLOCK_TO_EXPAND
+  | MLIL_BSWAP
+  | MLIL_POPCNT
+  | MLIL_CLZ
+  | MLIL_CTZ
+  | MLIL_RBIT
+  | MLIL_CLS
+  | MLIL_MINS
+  | MLIL_MAXS
+  | MLIL_MINU
+  | MLIL_MAXU
+  | MLIL_ABS
   deriving (Eq, Ord, Show, Enum)
 
 data BNMediumLevelILInstruction = BNMediumLevelILInstruction
@@ -1137,6 +1263,188 @@ data BNReferenceSource = BNReferenceSource
     bnAddr :: !Word64
   }
   deriving (Show, Eq)
+
+data Armv7Intrinsic
+  = ARMV7_INTRIN_DBG
+  | ARMV7_INTRIN_DMB_SY
+  | ARMV7_INTRIN_DMB_ST
+  | ARMV7_INTRIN_DMB_ISH
+  | ARMV7_INTRIN_DMB_ISHST
+  | ARMV7_INTRIN_DMB_NSH
+  | ARMV7_INTRIN_DMB_NSHST
+  | ARMV7_INTRIN_DMB_OSH
+  | ARMV7_INTRIN_DMB_OSHST
+  | ARMV7_INTRIN_DSB_SY
+  | ARMV7_INTRIN_DSB_ST
+  | ARMV7_INTRIN_DSB_ISH
+  | ARMV7_INTRIN_DSB_ISHST
+  | ARMV7_INTRIN_DSB_NSH
+  | ARMV7_INTRIN_DSB_NSHST
+  | ARMV7_INTRIN_DSB_OSH
+  | ARMV7_INTRIN_DSB_OSHST
+  | ARMV7_INTRIN_ISB
+  | ARMV7_INTRIN_YIELD
+  | ARMV7_INTRIN_MRS
+  | ARMV7_INTRIN_MSR
+  | ARMV7_INTRIN_VMRS
+  | ARMV7_INTRIN_VMSR
+  | ARMV7_INTRIN_SEV
+  | ARMV7_INTRIN_HVC
+  | ARMV7_INTRIN_SMC
+  | ARMV7_INTRIN_WFE
+  | ARMV7_INTRIN_WFI
+  | ARMV7_INTRIN_HINT
+  | ARMV7_INTRIN_UNPREDICTABLE
+  | ARM_M_INTRIN_SET_BASEPRI
+  | ARMV7_INTRIN_COPROC_GETONEWORD
+  | ARMV7_INTRIN_COPROC_GETTWOWORDS
+  | ARMV7_INTRIN_COPROC_SENDONEWORD
+  | ARMV7_INTRIN_COPROC_SENDTWOWORDS
+  | ARMV7_INTRIN_COPROC_STORE
+  | ARMV7_INTRIN_COPROC_LOAD
+  | ARMV7_INTRIN_COPROC_DATAPROCESSING
+  | ARMV7_INTRIN_EXCLUSIVE_MONITORS_PASS
+  | ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS
+  | ARMV7_INTRIN_CPS
+  | ARMV7_INTRIN_CPSID
+  | ARMV7_INTRIN_CPSIE
+  | ARMV7_INTRIN_SETEND
+  | ARMV7_INTRIN_CLREX
+  | ARMV7_INTRIN_PLD
+  | ARMV7_INTRIN_CRC32B
+  | ARMV7_INTRIN_CRC32CB
+  | ARMV7_INTRIN_CRC32CH
+  | ARMV7_INTRIN_CRC32CW
+  | ARMV7_INTRIN_CRC32H
+  | ARMV7_INTRIN_CRC32W
+  | ARMV7_INTRIN_SEL
+  | ARMV7_INTRIN_QADD
+  | ARMV7_INTRIN_QSUB
+  | ARMV7_INTRIN_QDADD
+  | ARMV7_INTRIN_QDSUB
+  | ARMV7_INTRIN_QADD16
+  | ARMV7_INTRIN_QADD8
+  | ARMV7_INTRIN_QSUB16
+  | ARMV7_INTRIN_QSUB8
+  | ARMV7_INTRIN_UQADD16
+  | ARMV7_INTRIN_UQADD8
+  | ARMV7_INTRIN_UQSUB16
+  | ARMV7_INTRIN_UQSUB8
+  | ARMV7_INTRIN_SXTAB16
+  | ARMV7_INTRIN_SXTB16
+  | ARMV7_INTRIN_UXTAB16
+  | ARMV7_INTRIN_UXTB16
+  | ARMV7_INTRIN_SADD16
+  | ARMV7_INTRIN_SADD8
+  | ARMV7_INTRIN_SHADD16
+  | ARMV7_INTRIN_SHADD8
+  | ARMV7_INTRIN_UHADD16
+  | ARMV7_INTRIN_UHADD8
+  | ARMV7_INTRIN_SASX
+  | ARMV7_INTRIN_UASX
+  | ARMV7_INTRIN_SHASX
+  | ARMV7_INTRIN_UHASX
+  | ARMV7_INTRIN_SSAX
+  | ARMV7_INTRIN_USAX
+  | ARMV7_INTRIN_SSUB16
+  | ARMV7_INTRIN_SSUB8
+  | ARMV7_INTRIN_SHSUB8
+  | ARMV7_INTRIN_SHSUB16
+  | ARMV7_INTRIN_UHSUB8
+  | ARMV7_INTRIN_UHSUB16
+  | ARMV7_INTRIN_USUB8
+  | ARMV7_INTRIN_USUB16
+  | ARMV7_INTRIN_SMLAD
+  | ARMV7_INTRIN_SMLADX
+  | ARMV7_INTRIN_SMUAD
+  | ARMV7_INTRIN_SMUADX
+  | ARMV7_INTRIN_SMUSD
+  | ARMV7_INTRIN_SMUSDX
+  | ARMV7_INTRIN_SMLSD
+  | ARMV7_INTRIN_SMLSDX
+  | ARMV7_INTRIN_SMLSLD
+  | ARMV7_INTRIN_SMLSLDX
+  | ARMV7_INTRIN_SMLAWB
+  | ARMV7_INTRIN_SMLAWT
+  | ARMV7_INTRIN_SMLALD
+  | ARMV7_INTRIN_SMLALDX
+  | ARMV7_INTRIN_USAD8
+  | ARMV7_INTRIN_USADA8
+  | ARMV7_INTRIN_QSAX
+  | ARMV7_INTRIN_UQASX
+  | ARMV7_INTRIN_UQSAX
+  | ARMV7_INTRIN_VRINTA
+  | ARMV7_INTRIN_VMAXNM
+  | ARMV7_INTRIN_VMINNM
+  | ARMV7_INTRIN_VMAX
+  | ARMV7_INTRIN_VMIN
+  | ARMV7_INTRIN_VPMAX
+  | ARMV7_INTRIN_VPMIN
+  | ARMV7_INTRIN_VREV16
+  | ARMV7_INTRIN_VREV32
+  | ARMV7_INTRIN_VREV64
+  | ARMV7_INTRIN_VEXT
+  | ARMV7_INTRIN_VCGT
+  | ARMV7_INTRIN_VCEQ
+  | ARMV7_INTRIN_VTBL
+  | ARMV7_INTRIN_VTBX
+  | ARMV7_INTRIN_VDUP
+  | ARMV7_INTRIN_VABD
+  | ARMV7_INTRIN_VABDL
+  | ARMV7_INTRIN_VABA
+  | ARMV7_INTRIN_VABAL
+  | ARMV7_INTRIN_VADDL
+  | ARMV7_INTRIN_VADDW
+  | ARMV7_INTRIN_VRADDHN
+  | ARMV7_INTRIN_VRSHR
+  | ARMV7_INTRIN_VRSHL
+  | ARMV7_INTRIN_VSRA
+  | ARMV7_INTRIN_VRSRA
+  | ARMV7_INTRIN_VSRI
+  | ARMV7_INTRIN_VSLI
+  | ARMV7_INTRIN_VLD2
+  | ARMV7_INTRIN_VLD4
+  | ARMV7_INTRIN_VST2
+  | ARMV7_INTRIN_VST4
+  | ARMV7_INTRIN_VSHL
+  | ARMV7_INTRIN_VSHR
+  | ARMV7_INTRIN_VSHLL
+  | ARMV7_INTRIN_VBIF
+  | ARMV7_INTRIN_VBIT
+  | ARMV7_INTRIN_VBSL
+  | ARMV7_INTRIN_VQADD
+  | ARMV7_INTRIN_VHADD
+  | ARMV7_INTRIN_VQSHL
+  | ARMV7_INTRIN_VQRSHL
+  | ARMV7_INTRIN_VQSHRN
+  | ARMV7_INTRIN_VQSHRUN
+  | ARMV7_INTRIN_VQRSHRN
+  | ARMV7_INTRIN_VQRSHRUN
+  | ARMV7_INTRIN_VQMOVN
+  | ARMV7_INTRIN_VQMOVUN
+  | ARMV7_INTRIN_VMLA
+  | ARMV7_INTRIN_VMLS
+  | ARMV7_INTRIN_VMLAL
+  | ARMV7_INTRIN_VMLSL
+  | ARMV7_INTRIN_VMUL
+  | ARMV7_INTRIN_VQDMULL
+  | ARMV7_INTRIN_SSAT
+  | ARMV7_INTRIN_SSAT16
+  | ARMV7_INTRIN_USAT
+  | ARMV7_INTRIN_USAT16
+  | ARMV7_INTRIN_SRS
+  | ARMV7_INTRIN_RFE
+  | ARMV7_INTRIN_UADD16
+  | ARMV7_INTRIN_UADD8
+  | ARMV7_INTRIN_SMLABB
+  | ARMV7_INTRIN_SMLABT
+  | ARMV7_INTRIN_SMLATB
+  | ARMV7_INTRIN_SMLATT
+  | ARMV7_INTRIN_VADD
+  | ARMV7_INTRIN_VSUB
+  | ARMV7_INTRIN_VRHADD
+  | ARMV7_INTRIN_VRECPE
+  deriving (Show, Eq, Ord, Enum)
 
 data Arm64Intrinsic
   = ARM64_INTRIN_AUTDA
@@ -37443,6 +37751,416 @@ instance Enum X86Intrinsic where
   toEnum 9060 = INTRINSIC_LAST
   toEnum n = error $ "X86 Intrinsic toEnum: invalid value: " ++ show n
 
+-- | Note the hexagon plugin is closed source so it's difficult to track changes to
+--   these hexagon intrinsics. The following was provided by vector35 August 8th, 2026
+data HexagonIntrinsic
+  = HEXAGON_READSR
+  | HEXAGON_ISYNC
+  | HEXAGON_DCKILL
+  | HEXAGON_ICINVA
+  | HEXAGON_DCFETCH
+  | HEXAGON_DCCLEANA
+  | HEXAGON_DCINVA
+  | HEXAGON_DCCLEANINVA
+  | HEXAGON_INSERT
+  | HEXAGON_BREAKPOINT
+  | HEXAGON_CT0
+  | HEXAGON_CT1
+  | HEXAGON_EXTRACT
+  | HEXAGON_EXTRACTU
+  | HEXAGON_STOREWORDLOCKED
+  | HEXAGON_STOREDOUBLEWORDLOCKED
+  | HEXAGON_SFFIXUPD
+  | HEXAGON_SFFIXUPN
+  | HEXAGON_SFFIXUPR
+  | HEXAGON_SFRECIPA
+  | HEXAGON_SFCLASS
+  | HEXAGON_DFCLASS
+  | HEXAGON_WRITESR
+  | HEXAGON_WRITESR64
+  | HEXAGON_STOP
+  | HEXAGON_NMI
+  | HEXAGON_ISASSIGNW
+  | HEXAGON_WAIT
+  | HEXAGON_RESUME
+  | HEXAGON_CRSWAP
+  | HEXAGON_RTE
+  | HEXAGON_PAUSE
+  | HEXAGON_START
+  | HEXAGON_SYNCHT
+  | HEXAGON_TLBLOCK
+  | HEXAGON_TLBUNLOCK
+  | HEXAGON_K0LOCK
+  | HEXAGON_K0UNLOCK
+  | HEXAGON_TLBW
+  | HEXAGON_TLBR
+  | HEXAGON_TLBP
+  | HEXAGON_TLBINVASID
+  | HEXAGON_CTLBW
+  | HEXAGON_TLBOC
+  | HEXAGON_DCZEROA
+  | HEXAGON_BARRIER
+  | HEXAGON_L2GCLEAN
+  | HEXAGON_L2GCLEANINV
+  | HEXAGON_L2KILL
+  | HEXAGON_L2GUNLOCK
+  | HEXAGON_VMUX
+  | HEXAGON_VCMP
+  | HEXAGON_ANY8
+  | HEXAGON_MASK
+  | HEXAGON_CLB
+  | HEXAGON_CL0
+  | HEXAGON_CL1
+  | HEXAGON_SWIZ
+  | HEXAGON_READGR
+  | HEXAGON_WRITEGR
+  | HEXAGON_WRITEGR64
+  | HEXAGON_POPCOUNT
+  | HEXAGON_TRACE
+  | HEXAGON_BREV
+  | HEXAGON_SAT
+  | HEXAGON_SATB
+  | HEXAGON_SATH
+  | HEXAGON_SATUB
+  | HEXAGON_SATUH
+  | HEXAGON_VALIGNB
+  | HEXAGON_TRAP0
+  | HEXAGON_TRAP1
+  | HEXAGON_CARRY
+  | HEXAGON_VSPLATB
+  | HEXAGON_VSUBH
+  | HEXAGON_VSUBUH
+  | HEXAGON_CMPY
+  | HEXAGON_DFMPYFIX
+  | HEXAGON_VMPYWEUH
+  | HEXAGON_VMPYWOUH
+  | HEXAGON_VMPYWEH
+  | HEXAGON_VMPYWOH
+  | HEXAGON_VMPYH
+  | HEXAGON_L2FETCH
+  | HEXAGON_PARITY
+  | HEXAGON_VADDH
+  | HEXAGON_VADDUH
+  | HEXAGON_VRMPYH
+  | HEXAGON_VRMPYWEH
+  | HEXAGON_VRMPYWOH
+  | HEXAGON_RND
+  | HEXAGON_NORMAMT
+  | HEXAGON_SETPRIO
+  | HEXAGON_TABLEIDX
+  | HEXAGON_PMPYW
+  | HEXAGON_VSPLATH
+  | HEXAGON_MODWRAP
+  | HEXAGON_VDMPY
+  | HEXAGON_VABSDIFFH
+  | HEXAGON_ICKILL
+  | HEXAGON_HINTJR
+  | HEXAGON_VSATHUB
+  | HEXAGON_VSATWH
+  | HEXAGON_VSATWUH
+  | HEXAGON_VSATHB
+  | HEXAGON_DCTAGR
+  | HEXAGON_VAVGH
+  | HEXAGON_VAVGUH
+  | HEXAGON_VNAVGH
+  | HEXAGON_VMAXB
+  | HEXAGON_VMAXUB
+  | HEXAGON_VMAXH
+  | HEXAGON_VMAXUH
+  | HEXAGON_VMAXW
+  | HEXAGON_VMAXUW
+  | HEXAGON_VMINB
+  | HEXAGON_VMINUB
+  | HEXAGON_VMINH
+  | HEXAGON_VMINUH
+  | HEXAGON_VMINW
+  | HEXAGON_VMINUW
+  | HEXAGON_INTERLEAVE
+  | HEXAGON_DEINTERLEAVE
+  | HEXAGON_VRNDWH
+  | HEXAGON_VZXTBH
+  | HEXAGON_VZXTHW
+  | HEXAGON_VASRH
+  | HEXAGON_VLSRH
+  | HEXAGON_VASLH
+  | HEXAGON_VLSLH
+  | HEXAGON_VCNEGH
+  | HEXAGON_VRCNEGH
+  | HEXAGON_VRMAXH
+  | HEXAGON_VRMAXUH
+  | HEXAGON_VRMAXW
+  | HEXAGON_VRMAXUW
+  | HEXAGON_GETIMASK
+  | HEXAGON_VTRUNEHB
+  | HEXAGON_VTRUNOHB
+  | HEXAGON_VSXTBH
+  | HEXAGON_SETIMASK
+  | HEXAGON_ROUND
+  | HEXAGON_CROUND
+  | HEXAGON_VRMINH
+  | HEXAGON_VRMINUH
+  | HEXAGON_VRMINW
+  | HEXAGON_VRMINUW
+  | HEXAGON_TLBMATCH
+  | HEXAGON_L2LOCKA
+  | HEXAGON_L2UNLOCKA
+  | HEXAGON_DCCLEANIDX
+  | HEXAGON_DCINVIDX
+  | HEXAGON_DCCLEANINVIDX
+  | HEXAGON_DCTAGW
+  | HEXAGON_L2TAGR
+  | HEXAGON_L2TAGW
+  | HEXAGON_L2CLEANIDX
+  | HEXAGON_L2CLEANINVIDX
+  | HEXAGON_L2INVIDX
+  | HEXAGON_CIRC
+  | HEXAGON_VCROTATE
+  | HEXAGON_VRADDH
+  | HEXAGON_VRADDUH
+  | HEXAGON_VSPLICEB
+  | HEXAGON_VCMPYR
+  | HEXAGON_VCMPYI
+  | HEXAGON_VCONJ
+  | HEXAGON_CMPYIWH
+  | HEXAGON_CMPYRWH
+  | HEXAGON_VABSH
+  | HEXAGON_VMPYEH
+  | HEXAGON_VMPYBSU
+  | HEXAGON_VMPYBU
+  | HEXAGON_VRCMPYR
+  | HEXAGON_VRCMPYI
+  | HEXAGON_VRCMPYS
+  | HEXAGON_SHUFFEB
+  | HEXAGON_SHUFFOB
+  | HEXAGON_SHUFFEH
+  | HEXAGON_SHUFFOH
+  | HEXAGON_VACSH
+  deriving (Show, Eq, Ord, Enum)
+
+data RiscvIntrinsic
+  = RISCV_SRET
+  | RISCV_MRET
+  | RISCV_WFI
+  | RISCV_CSRRW
+  | RISCV_CSRWR
+  | RISCV_CSRRD
+  | RISCV_CSRRS
+  | RISCV_CSRRC
+  | RISCV_FADD
+  | RISCV_FSUB
+  | RISCV_FMUL
+  | RISCV_FDIV
+  | RISCV_FSQRT
+  | RISCV_FSGNJ
+  | RISCV_FSGNJN
+  | RISCV_FSGNJX
+  | RISCV_FMIN
+  | RISCV_FMAX
+  | RISCV_FCLASS
+  | RISCV_FCVTFTOF
+  | RISCV_FCVTITOF
+  | RISCV_FCVTFTOI
+  | RISCV_FCVTUTOF
+  | RISCV_FCVTFTOU
+  | RISCV_FENCE
+  | RISCV_CLZ
+  | RISCV_CTZ
+  | RISCV_POPCOUNT
+  | RISCV_ORCOMBINE
+  | RISCV_REV8
+  | RISCV_WCHMCPY
+  deriving (Show, Eq, Ord, Enum)
+
+data MipsIntrinsic
+  = MIPS_INTRIN_WSBH
+  | MIPS_INTRIN_DSBH
+  | MIPS_INTRIN_DSHD
+  | MIPS_INTRIN_MFC0
+  | MIPS_INTRIN_MFC2
+  | MIPS_INTRIN_MFC_UNIMPLEMENTED
+  | MIPS_INTRIN_MTC0
+  | MIPS_INTRIN_MTC2
+  | MIPS_INTRIN_MTC_UNIMPLEMENTED
+  | MIPS_INTRIN_DMFC0
+  | MIPS_INTRIN_DMFC2
+  | MIPS_INTRIN_DMFC_UNIMPLEMENTED
+  | MIPS_INTRIN_DMTC0
+  | MIPS_INTRIN_DMTC2
+  | MIPS_INTRIN_DMTC_UNIMPLEMENTED
+  | MIPS_INTRIN_SYNC
+  | MIPS_INTRIN_SYNCI
+  | MIPS_INTRIN_DI
+  | MIPS_INTRIN_EHB
+  | MIPS_INTRIN_EI
+  | MIPS_INTRIN_PAUSE
+  | MIPS_INTRIN_WAIT
+  | MIPS_INTRIN_HWR0
+  | MIPS_INTRIN_HWR1
+  | MIPS_INTRIN_HWR2
+  | MIPS_INTRIN_HWR3
+  | MIPS_INTRIN_HWR29
+  | MIPS_INTRIN_HWR_UNKNOWN
+  | MIPS_INTRIN_LLBIT_SET
+  | MIPS_INTRIN_LLBIT_CHECK
+  | MIPS_INTRIN_PREFETCH
+  | MIPS_INTRIN_CACHE
+  | MIPS_INTRIN_SDBBP
+  | MIPS_INTRIN_GET_LEFT_PART32
+  | MIPS_INTRIN_GET_RIGHT_PART32
+  | MIPS_INTRIN_SET_LEFT_PART32
+  | MIPS_INTRIN_SET_RIGHT_PART32
+  | MIPS_INTRIN_GET_LEFT_PART64
+  | MIPS_INTRIN_GET_RIGHT_PART64
+  | MIPS_INTRIN_SET_LEFT_PART64
+  | MIPS_INTRIN_SET_RIGHT_PART64
+  | MIPS_INTRIN_TLBSET
+  | MIPS_INTRIN_TLBGET
+  | MIPS_INTRIN_TLBSEARCH
+  | MIPS_INTRIN_TLBINV
+  | MIPS_INTRIN_TLBINVF
+  | CNMIPS_INTRIN_SYNCIOBDMA
+  | CNMIPS_INTRIN_SYNCS
+  | CNMIPS_INTRIN_SYNCW
+  | CNMIPS_INTRIN_SYNCWS
+  | CNMIPS_INTRIN_HWR30
+  | CNMIPS_INTRIN_HWR31
+  | CNMIPS_INTRIN_POP
+  | CNMIPS_INTRIN_DPOP
+  | MIPS_INTRIN_R5900_VWAITQ
+  | MIPS_INTRIN_R5900_VU_MEM_LOAD
+  | MIPS_INTRIN_R5900_VU_MEM_STORE
+  | MIPS_INTRIN_R5900_VU0_CALLMS
+  | MIPS_INTRIN_R5900_VU0_CALLMSR
+  | MIPS_INTRIN_COP0_CONDITION
+  | MIPS_INTRIN_INVALID
+  deriving (Show, Eq, Ord)
+
+instance Enum MipsIntrinsic where
+  fromEnum MIPS_INTRIN_WSBH = 0
+  fromEnum MIPS_INTRIN_DSBH = 1
+  fromEnum MIPS_INTRIN_DSHD = 2
+  fromEnum MIPS_INTRIN_MFC0 = 3
+  fromEnum MIPS_INTRIN_MFC2 = 4
+  fromEnum MIPS_INTRIN_MFC_UNIMPLEMENTED = 5
+  fromEnum MIPS_INTRIN_MTC0 = 6
+  fromEnum MIPS_INTRIN_MTC2 = 7
+  fromEnum MIPS_INTRIN_MTC_UNIMPLEMENTED = 8
+  fromEnum MIPS_INTRIN_DMFC0 = 9
+  fromEnum MIPS_INTRIN_DMFC2 = 10
+  fromEnum MIPS_INTRIN_DMFC_UNIMPLEMENTED = 11
+  fromEnum MIPS_INTRIN_DMTC0 = 12
+  fromEnum MIPS_INTRIN_DMTC2 = 13
+  fromEnum MIPS_INTRIN_DMTC_UNIMPLEMENTED = 14
+  fromEnum MIPS_INTRIN_SYNC = 15
+  fromEnum MIPS_INTRIN_SYNCI = 16
+  fromEnum MIPS_INTRIN_DI = 17
+  fromEnum MIPS_INTRIN_EHB = 18
+  fromEnum MIPS_INTRIN_EI = 19
+  fromEnum MIPS_INTRIN_PAUSE = 20
+  fromEnum MIPS_INTRIN_WAIT = 21
+  fromEnum MIPS_INTRIN_HWR0 = 22
+  fromEnum MIPS_INTRIN_HWR1 = 23
+  fromEnum MIPS_INTRIN_HWR2 = 24
+  fromEnum MIPS_INTRIN_HWR3 = 25
+  fromEnum MIPS_INTRIN_HWR29 = 26
+  fromEnum MIPS_INTRIN_HWR_UNKNOWN = 27
+  fromEnum MIPS_INTRIN_LLBIT_SET = 28
+  fromEnum MIPS_INTRIN_LLBIT_CHECK = 29
+  fromEnum MIPS_INTRIN_PREFETCH = 30
+  fromEnum MIPS_INTRIN_CACHE = 31
+  fromEnum MIPS_INTRIN_SDBBP = 32
+  fromEnum MIPS_INTRIN_GET_LEFT_PART32 = 33
+  fromEnum MIPS_INTRIN_GET_RIGHT_PART32 = 34
+  fromEnum MIPS_INTRIN_SET_LEFT_PART32 = 35
+  fromEnum MIPS_INTRIN_SET_RIGHT_PART32 = 36
+  fromEnum MIPS_INTRIN_GET_LEFT_PART64 = 37
+  fromEnum MIPS_INTRIN_GET_RIGHT_PART64 = 38
+  fromEnum MIPS_INTRIN_SET_LEFT_PART64 = 39
+  fromEnum MIPS_INTRIN_SET_RIGHT_PART64 = 40
+  fromEnum MIPS_INTRIN_TLBSET = 41
+  fromEnum MIPS_INTRIN_TLBGET = 42
+  fromEnum MIPS_INTRIN_TLBSEARCH = 43
+  fromEnum MIPS_INTRIN_TLBINV = 44
+  fromEnum MIPS_INTRIN_TLBINVF = 45
+  fromEnum CNMIPS_INTRIN_SYNCIOBDMA = 46
+  fromEnum CNMIPS_INTRIN_SYNCS = 47
+  fromEnum CNMIPS_INTRIN_SYNCW = 48
+  fromEnum CNMIPS_INTRIN_SYNCWS = 49
+  fromEnum CNMIPS_INTRIN_HWR30 = 50
+  fromEnum CNMIPS_INTRIN_HWR31 = 51
+  fromEnum CNMIPS_INTRIN_POP = 52
+  fromEnum CNMIPS_INTRIN_DPOP = 53
+  fromEnum MIPS_INTRIN_R5900_VWAITQ = 54
+  fromEnum MIPS_INTRIN_R5900_VU_MEM_LOAD = 55
+  fromEnum MIPS_INTRIN_R5900_VU_MEM_STORE = 56
+  fromEnum MIPS_INTRIN_R5900_VU0_CALLMS = 57
+  fromEnum MIPS_INTRIN_R5900_VU0_CALLMSR = 58
+  fromEnum MIPS_INTRIN_COP0_CONDITION = 59
+  fromEnum MIPS_INTRIN_INVALID = 0xFFFFFFFF
+
+  toEnum 0 = MIPS_INTRIN_WSBH
+  toEnum 1 = MIPS_INTRIN_DSBH
+  toEnum 2 = MIPS_INTRIN_DSHD
+  toEnum 3 = MIPS_INTRIN_MFC0
+  toEnum 4 = MIPS_INTRIN_MFC2
+  toEnum 5 = MIPS_INTRIN_MFC_UNIMPLEMENTED
+  toEnum 6 = MIPS_INTRIN_MTC0
+  toEnum 7 = MIPS_INTRIN_MTC2
+  toEnum 8 = MIPS_INTRIN_MTC_UNIMPLEMENTED
+  toEnum 9 = MIPS_INTRIN_DMFC0
+  toEnum 10 = MIPS_INTRIN_DMFC2
+  toEnum 11 = MIPS_INTRIN_DMFC_UNIMPLEMENTED
+  toEnum 12 = MIPS_INTRIN_DMTC0
+  toEnum 13 = MIPS_INTRIN_DMTC2
+  toEnum 14 = MIPS_INTRIN_DMTC_UNIMPLEMENTED
+  toEnum 15 = MIPS_INTRIN_SYNC
+  toEnum 16 = MIPS_INTRIN_SYNCI
+  toEnum 17 = MIPS_INTRIN_DI
+  toEnum 18 = MIPS_INTRIN_EHB
+  toEnum 19 = MIPS_INTRIN_EI
+  toEnum 20 = MIPS_INTRIN_PAUSE
+  toEnum 21 = MIPS_INTRIN_WAIT
+  toEnum 22 = MIPS_INTRIN_HWR0
+  toEnum 23 = MIPS_INTRIN_HWR1
+  toEnum 24 = MIPS_INTRIN_HWR2
+  toEnum 25 = MIPS_INTRIN_HWR3
+  toEnum 26 = MIPS_INTRIN_HWR29
+  toEnum 27 = MIPS_INTRIN_HWR_UNKNOWN
+  toEnum 28 = MIPS_INTRIN_LLBIT_SET
+  toEnum 29 = MIPS_INTRIN_LLBIT_CHECK
+  toEnum 30 = MIPS_INTRIN_PREFETCH
+  toEnum 31 = MIPS_INTRIN_CACHE
+  toEnum 32 = MIPS_INTRIN_SDBBP
+  toEnum 33 = MIPS_INTRIN_GET_LEFT_PART32
+  toEnum 34 = MIPS_INTRIN_GET_RIGHT_PART32
+  toEnum 35 = MIPS_INTRIN_SET_LEFT_PART32
+  toEnum 36 = MIPS_INTRIN_SET_RIGHT_PART32
+  toEnum 37 = MIPS_INTRIN_GET_LEFT_PART64
+  toEnum 38 = MIPS_INTRIN_GET_RIGHT_PART64
+  toEnum 39 = MIPS_INTRIN_SET_LEFT_PART64
+  toEnum 40 = MIPS_INTRIN_SET_RIGHT_PART64
+  toEnum 41 = MIPS_INTRIN_TLBSET
+  toEnum 42 = MIPS_INTRIN_TLBGET
+  toEnum 43 = MIPS_INTRIN_TLBSEARCH
+  toEnum 44 = MIPS_INTRIN_TLBINV
+  toEnum 45 = MIPS_INTRIN_TLBINVF
+  toEnum 46 = CNMIPS_INTRIN_SYNCIOBDMA
+  toEnum 47 = CNMIPS_INTRIN_SYNCS
+  toEnum 48 = CNMIPS_INTRIN_SYNCW
+  toEnum 49 = CNMIPS_INTRIN_SYNCWS
+  toEnum 50 = CNMIPS_INTRIN_HWR30
+  toEnum 51 = CNMIPS_INTRIN_HWR31
+  toEnum 52 = CNMIPS_INTRIN_POP
+  toEnum 53 = CNMIPS_INTRIN_DPOP
+  toEnum 54 = MIPS_INTRIN_R5900_VWAITQ
+  toEnum 55 = MIPS_INTRIN_R5900_VU_MEM_LOAD
+  toEnum 56 = MIPS_INTRIN_R5900_VU_MEM_STORE
+  toEnum 57 = MIPS_INTRIN_R5900_VU0_CALLMS
+  toEnum 58 = MIPS_INTRIN_R5900_VU0_CALLMSR
+  toEnum 59 = MIPS_INTRIN_COP0_CONDITION
+  toEnum 0xFFFFFFFF = MIPS_INTRIN_INVALID
+  toEnum n = error $ "Mips Intrinsic toEnum: invalid value: " ++ show n
+
 data CoreMediumLevelILInstruction = CoreMediumLevelILInstruction
   { instr :: BNMediumLevelILInstruction,
     ilFunc :: BNMlilSSAFunctionPtr,
@@ -37470,8 +38188,32 @@ data MediumLevelILCallOutputSsaRec = MediumLevelILCallOutputSsaRec
   }
   deriving (Show, Eq, Ord)
 
-data MediumLevelILCallOutputRec = MediumLevelILCallOutputRec
-  { dest :: [BNVariable],
+data MediumLevelILVarOutputSsaRec = MediumLevelILVarOutputSsaRec
+  { dest :: BNSSAVariable,
+    var :: BNSSAVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputSsaFieldRec = MediumLevelILVarOutputSsaFieldRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputAliasedRec = MediumLevelILVarOutputAliasedRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputAliasedFieldRec = MediumLevelILVarOutputAliasedFieldRec
+  { dest :: BNSSAVariable,
+    prev :: BNSSAVariable,
+    offset :: Int,
     core :: CoreMediumLevelILInstruction
   }
   deriving (Show, Eq, Ord)
@@ -37552,6 +38294,18 @@ data MediumLevelILAddressOfRec = MediumLevelILAddressOfRec
 data MediumLevelILAddressOfFieldRec = MediumLevelILAddressOfFieldRec
   { src :: BNVariable,
     offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILPassByRefRec = MediumLevelILPassByRefRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILReturnByRefRec = MediumLevelILReturnByRefRec
+  { src :: MediumLevelILSSAInstruction,
     core :: CoreMediumLevelILInstruction
   }
   deriving (Show, Eq, Ord)
@@ -38332,6 +39086,25 @@ data MediumLevelILSharedParamSlotRec = MediumLevelILSharedParamSlotRec
   }
   deriving (Show, Eq, Ord)
 
+data MediumLevelILVarOutputRec = MediumLevelILVarOutputRec
+  { dest :: BNVariable,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILVarOutputFieldRec = MediumLevelILVarOutputFieldRec
+  { dest :: BNVariable,
+    offset :: Int,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILStoreOutputRec = MediumLevelILStoreOutputRec
+  { dest :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
 data MediumLevelILSyscallRec = MediumLevelILSyscallRec
   { output :: [BNVariable],
     params :: [MediumLevelILSSAInstruction],
@@ -38437,6 +39210,82 @@ data MediumLevelILMemPhiRec = MediumLevelILMemPhiRec
   }
   deriving (Show, Eq, Ord)
 
+data MediumLevelILBlockToExpandRec = MediumLevelILBlockToExpandRec
+  { exprs :: [MediumLevelILSSAInstruction],
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILBswapRec = MediumLevelILBswapRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILPopcntRec = MediumLevelILPopcntRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILClzRec = MediumLevelILClzRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILCtzRec = MediumLevelILCtzRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILRbitRec = MediumLevelILRbitRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILClsRec = MediumLevelILClsRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMinsRec = MediumLevelILMinsRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMaxsRec = MediumLevelILMaxsRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMinuRec = MediumLevelILMinuRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILMaxuRec = MediumLevelILMaxuRec
+  { left :: MediumLevelILSSAInstruction,
+    right :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
+data MediumLevelILAbsRec = MediumLevelILAbsRec
+  { src :: MediumLevelILSSAInstruction,
+    core :: CoreMediumLevelILInstruction
+  }
+  deriving (Show, Eq, Ord)
+
 data Localcall
   = MediumLevelILCall MediumLevelILCallRec
   | MediumLevelILCallSsa MediumLevelILCallSsaRec
@@ -38511,6 +39360,17 @@ data Arithmetic
   | MediumLevelILFsub MediumLevelILFsubRec
   | MediumLevelILFmul MediumLevelILFmulRec
   | MediumLevelILFdiv MediumLevelILFdivRec
+  | MediumLevelILBswap MediumLevelILBswapRec
+  | MediumLevelILPopcnt MediumLevelILPopcntRec
+  | MediumLevelILClz MediumLevelILClzRec
+  | MediumLevelILCtz MediumLevelILCtzRec
+  | MediumLevelILRbit MediumLevelILRbitRec
+  | MediumLevelILCls MediumLevelILClsRec
+  | MediumLevelILMins MediumLevelILMinsRec
+  | MediumLevelILMaxs MediumLevelILMaxsRec
+  | MediumLevelILMinu MediumLevelILMinuRec
+  | MediumLevelILMaxu MediumLevelILMaxuRec
+  | MediumLevelILAbs MediumLevelILAbsRec
   deriving (Show, Eq, Ord)
 
 data Terminal
@@ -38557,6 +39417,7 @@ data Store
   | MediumLevelILStoreStruct MediumLevelILStoreStructRec
   | MediumLevelILStoreSsa MediumLevelILStoreSsaRec
   | MediumLevelILStoreStructSsa MediumLevelILStoreStructSsaRec
+  | MediumLevelILStoreOutput MediumLevelILStoreOutputRec
   deriving (Show, Eq, Ord)
 
 data Memory
@@ -38581,11 +39442,16 @@ data SetVar
   | MediumLevelILSetVarAliasedField MediumLevelILSetVarAliasedFieldRec
   | MediumLevelILSetVarField MediumLevelILSetVarFieldRec
   | MediumLevelILSetVarSplit MediumLevelILSetVarSplitRec
+  | MediumLevelILVarOutputField MediumLevelILVarOutputFieldRec
+  | MediumLevelILVarOutputSsaField MediumLevelILVarOutputSsaFieldRec
+  | MediumLevelILVarOutputAliased MediumLevelILVarOutputAliasedRec
+  | MediumLevelILVarOutputAliasedField MediumLevelILVarOutputAliasedFieldRec
   deriving (Show, Eq, Ord)
 
 data RegisterStack
   = MediumLevelILFreeVarSlot MediumLevelILFreeVarSlotRec
   | MediumLevelILFreeVarSlotSsa MediumLevelILFreeVarSlotSsaRec
+  | MediumLevelILVarOutput MediumLevelILVarOutputRec
   deriving (Show, Eq, Ord)
 
 data VariableInstruction
@@ -38622,13 +39488,14 @@ data MediumLevelILSSAInstruction
   | RegisterStack RegisterStack
   | IntrinsicInstruction IntrinsicInstruction
   | MediumLevelILCallOutputSsa MediumLevelILCallOutputSsaRec
-  | MediumLevelILCallOutput MediumLevelILCallOutputRec
   | MediumLevelILMemoryIntrinsicOutputSsa MediumLevelILMemoryIntrinsicOutputSsaRec
   | MediumLevelILCallParamSsa MediumLevelILCallParamSsaRec
   | MediumLevelILCallParam MediumLevelILCallParamRec
   | MediumLevelILNop MediumLevelILNopRec
   | MediumLevelILAddressOf MediumLevelILAddressOfRec
   | MediumLevelILAddressOfField MediumLevelILAddressOfFieldRec
+  | MediumLevelILPassByRef MediumLevelILPassByRefRec
+  | MediumLevelILReturnByRef MediumLevelILReturnByRefRec
   | MediumLevelILMuluDp MediumLevelILMuluDpRec
   | MediumLevelILMulsDp MediumLevelILMulsDpRec
   | MediumLevelILDivuDp MediumLevelILDivuDpRec
@@ -38646,4 +39513,6 @@ data MediumLevelILSSAInstruction
   | MediumLevelILUnimpl MediumLevelILUnimplRec
   | MediumLevelILSeparateParamList MediumLevelILSeparateParamListRec
   | MediumLevelILSharedParamSlot MediumLevelILSharedParamSlotRec
+  | MediumLevelILVarOutputSsa MediumLevelILVarOutputSsaRec
+  | MediumLevelILBlockToExpand MediumLevelILBlockToExpandRec
   deriving (Show, Eq, Ord)

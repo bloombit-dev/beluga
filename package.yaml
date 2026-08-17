@@ -27,29 +27,25 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-    Binja.AnalysisContext
-    Binja.BinaryView
-    Binja.FFI
-    Binja.Llil
-    Binja.Mlil
-    Binja.Function
-    Binja.BasicBlock
-    Binja.Plugin
-    Binja.ReferenceSource
-    Binja.Symbol
-    Binja.Types
-    Binja.Utils
-    Binja.ControlFlowGraph
-    Callgraph
-    DependenceGraph
-  other-modules: []
+    - Binja.AnalysisContext
+    - Binja.BinaryView
+    - Binja.FFI
+    - Binja.Llil
+    - Binja.Mlil
+    - Binja.Function
+    - Binja.BasicBlock
+    - Binja.Plugin
+    - Binja.ReferenceSource
+    - Binja.Symbol
+    - Binja.Types
+    - Binja.Utils
+    - Binja.ControlFlowGraph
+    - Callgraph
   ghc-options:
     - -Wall
-    - -threaded
-    - -rtsopts
   ld-options:
-    - -Wl,-rpath,${pkgroot} # for macOS
-    - -Wl,-rpath,. # for macOS
+    - -Wl,-rpath,${pkgroot}
+    - -Wl,-rpath,.
   c-sources:
     - cbits/wrapper.c
   include-dirs:
@@ -57,14 +53,27 @@ library:
   extra-libraries:
     - binaryninjacore
 
+tests:
+  all:
+    main: Test.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    extra-libraries:
+      - binaryninjacore
+    dependencies:
+      - beluga
+
 executables:
   example:
     main: Main.hs
     source-dirs: example
     ghc-options:
-      - -Wall
       - -threaded
       - -rtsopts
+      - -with-rtsopts=-N
     extra-libraries:
       - binaryninjacore
     dependencies:

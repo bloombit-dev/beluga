@@ -22,7 +22,10 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 beluga.cabal
-test
+test/macos
+test/qcadsp8380.mbn
+test/reports
 *.dylib
 *.sh
 stack.yaml.lock
+*DS_Store

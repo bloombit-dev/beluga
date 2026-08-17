@@ -5,10 +5,11 @@ module DependenceGraph
   )
 where
 
-import Binja.Types
 import qualified Algebra.Graph.Acyclic.AdjacencyMap as Acyclic
+import Binja.Types
 
 type Vertex = Binja.Types.MediumLevelILSSAInstruction
+
 type Graph = Acyclic.AdjacencyMap Vertex
 
 data Dependence = Dependence
@@ -18,10 +19,10 @@ data Dependence = Dependence
 
 create :: AnalysisContext -> MediumLevelILSSAInstruction -> Dependence
 create context inst =
-  Dependence {
-    root = inst,
-    graph = createAux context inst Acyclic.empty
-  }
+  Dependence
+    { root = inst,
+      graph = createAux context inst Acyclic.empty
+    }
 
 createAux :: AnalysisContext -> MediumLevelILSSAInstruction -> Graph -> Graph
 createAux context (Localcall lc) graph' =
@@ -54,21 +55,21 @@ createAux context (Comparison cmp) graph' =
     MediumLevelILTestBit MediumLevelILTestBitRec {left = l, right = r} -> graph'
 createAux context (Arithmetic a) graph' =
   case a of
-    MediumLevelILNeg MediumLevelILNegRec {src = s} -> graph' 
+    MediumLevelILNeg MediumLevelILNegRec {src = s} -> graph'
     MediumLevelILNot MediumLevelILNotRec {src = s} -> graph'
-    MediumLevelILSx MediumLevelILSxRec {src = s} -> graph' 
-    MediumLevelILZx MediumLevelILZxRec {src = s} -> graph' 
-    MediumLevelILLowPart MediumLevelILLowPartRec {src = s} -> graph' 
-    MediumLevelILFsqrt MediumLevelILFsqrtRec {src = s} -> graph' 
-    MediumLevelILFneg MediumLevelILFnegRec {src = s} -> graph' 
-    MediumLevelILFabs MediumLevelILFabsRec {src = s} -> graph' 
-    MediumLevelILFloatToInt MediumLevelILFloatToIntRec {src = s} -> graph' 
-    MediumLevelILIntToFloat MediumLevelILIntToFloatRec {src = s} -> graph' 
-    MediumLevelILFloatConv MediumLevelILFloatConvRec {src = s} -> graph' 
-    MediumLevelILRoundToInt MediumLevelILRoundToIntRec {src = s} -> graph' 
-    MediumLevelILFloor MediumLevelILFloorRec {src = s} -> graph' 
-    MediumLevelILCeil MediumLevelILCeilRec {src = s} -> graph' 
-    MediumLevelILFtrunc MediumLevelILFtruncRec {src = s} -> graph' 
+    MediumLevelILSx MediumLevelILSxRec {src = s} -> graph'
+    MediumLevelILZx MediumLevelILZxRec {src = s} -> graph'
+    MediumLevelILLowPart MediumLevelILLowPartRec {src = s} -> graph'
+    MediumLevelILFsqrt MediumLevelILFsqrtRec {src = s} -> graph'
+    MediumLevelILFneg MediumLevelILFnegRec {src = s} -> graph'
+    MediumLevelILFabs MediumLevelILFabsRec {src = s} -> graph'
+    MediumLevelILFloatToInt MediumLevelILFloatToIntRec {src = s} -> graph'
+    MediumLevelILIntToFloat MediumLevelILIntToFloatRec {src = s} -> graph'
+    MediumLevelILFloatConv MediumLevelILFloatConvRec {src = s} -> graph'
+    MediumLevelILRoundToInt MediumLevelILRoundToIntRec {src = s} -> graph'
+    MediumLevelILFloor MediumLevelILFloorRec {src = s} -> graph'
+    MediumLevelILCeil MediumLevelILCeilRec {src = s} -> graph'
+    MediumLevelILFtrunc MediumLevelILFtruncRec {src = s} -> graph'
     MediumLevelILAdd MediumLevelILAddRec {left = l, right = r} -> graph'
     MediumLevelILSub MediumLevelILSubRec {left = l, right = r} -> graph'
     MediumLevelILAnd MediumLevelILAndRec {left = l, right = r} -> graph'
@@ -89,15 +90,26 @@ createAux context (Arithmetic a) graph' =
     MediumLevelILFsub MediumLevelILFsubRec {left = l, right = r} -> graph'
     MediumLevelILFmul MediumLevelILFmulRec {left = l, right = r} -> graph'
     MediumLevelILFdiv MediumLevelILFdivRec {left = l, right = r} -> graph'
+    MediumLevelILBswap MediumLevelILBswapRec {src = s} -> graph'
+    MediumLevelILPopcnt MediumLevelILPopcntRec {src = s} -> graph'
+    MediumLevelILClz MediumLevelILClzRec {src = s} -> graph'
+    MediumLevelILCtz MediumLevelILCtzRec {src = s} -> graph'
+    MediumLevelILRbit MediumLevelILRbitRec {src = s} -> graph'
+    MediumLevelILCls MediumLevelILClsRec {src = s} -> graph'
+    MediumLevelILMins MediumLevelILMinsRec {left = l, right = r} -> graph'
+    MediumLevelILMaxs MediumLevelILMaxsRec {left = l, right = r} -> graph'
+    MediumLevelILMinu MediumLevelILMinuRec {left = l, right = r} -> graph'
+    MediumLevelILMaxu MediumLevelILMaxuRec {left = l, right = r} -> graph'
+    MediumLevelILAbs MediumLevelILAbsRec {src = s} -> graph'
 createAux context (Terminal t) graph' =
   case t of
     MediumLevelILNoret _ -> graph'
     MediumLevelILBp _ -> graph'
-    MediumLevelILJump MediumLevelILJumpRec {dest = d} -> graph' 
+    MediumLevelILJump MediumLevelILJumpRec {dest = d} -> graph'
     MediumLevelILGoto _ -> graph'
     MediumLevelILTrap _ -> graph'
     MediumLevelILJumpTo MediumLevelILJumpToRec {dest = d} -> graph'
-    MediumLevelILIf MediumLevelILIfRec {condition = c} -> graph' 
+    MediumLevelILIf MediumLevelILIfRec {condition = c} -> graph'
 createAux context (Syscall s) graph' =
   case s of
     MediumLevelILSyscallUntyped MediumLevelILSyscallUntypedRec {params = p} -> graph'
@@ -124,6 +136,7 @@ createAux context (Store store') graph' =
     MediumLevelILStoreStruct MediumLevelILStoreStructRec {src = s, dest = d} -> graph'
     MediumLevelILStoreSsa MediumLevelILStoreSsaRec {src = s, dest = d} -> graph'
     MediumLevelILStoreStructSsa MediumLevelILStoreStructSsaRec {src = s, dest = d} -> graph'
+    MediumLevelILStoreOutput MediumLevelILStoreOutputRec {dest = d} -> graph'
 createAux context (Memory m) graph' =
   case m of
     MediumLevelILUnimplMem MediumLevelILUnimplMemRec {src = s} -> graph'
@@ -145,6 +158,10 @@ createAux context (SetVar sv) graph' =
     MediumLevelILSetVarAliasedField MediumLevelILSetVarAliasedFieldRec {src = s} -> graph'
     MediumLevelILSetVarField MediumLevelILSetVarFieldRec {src = s} -> graph'
     MediumLevelILSetVarSplit MediumLevelILSetVarSplitRec {src = s} -> graph'
+    MediumLevelILVarOutputField MediumLevelILVarOutputFieldRec {dest = d, offset = o} -> graph'
+    MediumLevelILVarOutputSsaField MediumLevelILVarOutputSsaFieldRec {dest = d, prev = p, offset = o} -> graph'
+    MediumLevelILVarOutputAliased MediumLevelILVarOutputAliasedRec {dest = d, prev = p} -> graph'
+    MediumLevelILVarOutputAliasedField MediumLevelILVarOutputAliasedFieldRec {dest = d, prev = p, offset = o} -> graph'
 createAux context (RegisterStack _) graph' = graph'
 createAux context (VariableInstruction _) graph' = graph'
 createAux context (IntrinsicInstruction ii) graph' =
@@ -153,13 +170,16 @@ createAux context (IntrinsicInstruction ii) graph' =
     MediumLevelILIntrinsicSsa MediumLevelILIntrinsicSsaRec {params = p} -> graph'
     MediumLevelILMemoryIntrinsicSsa MediumLevelILMemoryIntrinsicSsaRec {params = p} -> graph'
 createAux context (MediumLevelILCallOutputSsa _) graph' = graph'
-createAux context (MediumLevelILCallOutput _) graph' = graph'
 createAux context (MediumLevelILMemoryIntrinsicOutputSsa _) graph' = graph'
 createAux context (MediumLevelILCallParamSsa MediumLevelILCallParamSsaRec {src = s}) graph' = graph'
 createAux context (MediumLevelILCallParam MediumLevelILCallParamRec {src = s}) graph' = graph'
 createAux context (MediumLevelILNop _) graph' = graph'
 createAux context (MediumLevelILAddressOf _) graph' = graph'
 createAux context (MediumLevelILAddressOfField _) graph' = graph'
+createAux context (MediumLevelILPassByRef _) graph' = graph'
+createAux context (MediumLevelILReturnByRef _) graph' = graph'
+createAux context (MediumLevelILVarOutputSsa _) graph' = graph'
+createAux context (MediumLevelILBlockToExpand _) graph' = graph'
 createAux context (MediumLevelILMuluDp MediumLevelILMuluDpRec {left = l, right = r}) graph' = graph'
 createAux context (MediumLevelILMulsDp MediumLevelILMulsDpRec {left = l, right = r}) graph' = graph'
 createAux context (MediumLevelILDivuDp MediumLevelILDivuDpRec {left = l, right = r}) graph' = graph'

@@ -43,8 +43,8 @@ loadFilename ::
   -- | Options string (JSON)
   String ->
   IO BNBinaryViewPtr
-loadFilename filename updateAnalysisB options =
-  withCString filename $ \cFilename ->
+loadFilename filename' updateAnalysisB options =
+  withCString filename' $ \cFilename ->
     withCString options $ \cOptions ->
       c_BNLoadFilename
         cFilename
@@ -54,11 +54,11 @@ loadFilename filename updateAnalysisB options =
         nullPtr -- no progress context
 
 load :: String -> String -> IO BNBinaryViewPtr
-load filename options = do
+load filename' options = do
   _ <- initPlugins False
-  viewPtr' <- loadFilename filename True options
+  viewPtr' <- loadFilename filename' True options
   if viewPtr' == nullPtr
-    then error $ "Failed to load binary view on file: " ++ filename
+    then error $ "Failed to load binary view on file: " ++ filename'
     else pure viewPtr'
 
 close :: BNBinaryViewPtr -> IO ()
@@ -78,8 +78,8 @@ hasDataVariables = Binja.Utils.toBool . c_BNHasDataVariables
 -- saves the original binary file to the (filename)
 -- absolute filepath along with any modifications
 save :: BNBinaryViewPtr -> String -> IO Bool
-save view filename =
-  withCString filename $ \cFilename -> do
+save view filename' =
+  withCString filename' $ \cFilename -> do
     result <- c_BNSaveToFilename view cFilename
     pure (Binja.Utils.toBool result)
 
@@ -253,11 +253,11 @@ symbolAt view addr = do
   if symbolPtr == nullPtr
     then do
       funcs <- functionsAt view addr
-      if length funcs > 0
-        then do
-          sym <- Binja.Function.symbol $ head funcs
+      case funcs of
+        [] -> pure Nothing
+        (hd : _) -> do
+          sym <- Binja.Function.symbol hd
           pure $ Just sym
-        else pure Nothing
     else do
       sym <- Binja.Symbol.create symbolPtr
       pure $ Just sym

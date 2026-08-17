@@ -168,6 +168,7 @@ mlil func = do
       mlilFuncPtr <- c_BNGetFunctionMediumLevelIL func
       if mlilFuncPtr == nullPtr
         then do
+          _ <- Prelude.print $ "Binja.Function.mlil: Failure at the following function: "
           Binja.Function.print func
           error "Binja.Function.mlil: c_BNGetFunctionMediumLevelIL evaluated to nullPtr"
         else pure mlilFuncPtr
@@ -203,16 +204,15 @@ print func = do
   upd <- needsUpdate func
   indBr <- hasUnresolvedIndirectBranches func
   cmt <- getComment func
-  putStrLn "== BNFunction =="
-  putStrLn $ "  start: " ++ show s
-  putStrLn $ "  lowestAddress: " ++ show lo
-  putStrLn $ "  highestAddress: " ++ show hi
-  putStrLn $ "  symbol: " ++ show mSym
-  putStrLn $ "  automaticallyDiscovered: " ++ show isAuto
-  putStrLn $ "  hasUserAnnotations: " ++ show userAnn
-  putStrLn $ "  hasExplicitlyDefinedType: " ++ show explTy
-  putStrLn $ "  needsUpdate: " ++ show upd
-  putStrLn $ "  unresolvedIndirectBranches: " ++ show indBr
+  putStrLn $ "start: " ++ show s
+  putStrLn $ "lowestAddress: " ++ show lo
+  putStrLn $ "highestAddress: " ++ show hi
+  putStrLn $ "symbol: " ++ show mSym
+  putStrLn $ "automaticallyDiscovered: " ++ show isAuto
+  putStrLn $ "hasUserAnnotations: " ++ show userAnn
+  putStrLn $ "hasExplicitlyDefinedType: " ++ show explTy
+  putStrLn $ "needsUpdate: " ++ show upd
+  putStrLn $ "unresolvedIndirectBranches: " ++ show indBr
   unless (null cmt) $
     putStrLn $
-      "  comment:  " ++ cmt
+      "comment:  " ++ cmt
