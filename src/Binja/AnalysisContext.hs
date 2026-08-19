@@ -145,10 +145,8 @@ extractCallDestSymbol context callInst =
   case callInst of
     Localcall lc ->
       case lc of
-        (MediumLevelILCall MediumLevelILCallRec {dest = d}) -> processDest d
         (MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d}) -> processDest d
         (MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d}) -> processDest d
-        (MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d}) -> processDest d
     Tailcall tc ->
       case tc of
         (MediumLevelILTailcallUntyped MediumLevelILTailcallUntypedRec {dest = d}) -> processDest d

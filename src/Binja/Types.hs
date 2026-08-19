@@ -226,7 +226,6 @@ module Binja.Types
     MediumLevelILVarSplitRec (..),
     MediumLevelILExternPtrRec (..),
     MediumLevelILRetHintRec (..),
-    MediumLevelILCallRec (..),
     MediumLevelILBpRec (..),
     MediumLevelILTrapRec (..),
     MediumLevelILUndefRec (..),
@@ -237,7 +236,6 @@ module Binja.Types
     MediumLevelILAssertSsaRec (..),
     MediumLevelILForceVerSsaRec (..),
     MediumLevelILCallUntypedSsaRec (..),
-    MediumLevelILCallUntypedRec (..),
     MediumLevelILSeparateParamListRec (..),
     MediumLevelILSharedParamSlotRec (..),
     MediumLevelILVarOutputRec (..),
@@ -39287,10 +39285,8 @@ data MediumLevelILAbsRec = MediumLevelILAbsRec
   deriving (Show, Eq, Ord)
 
 data Localcall
-  = MediumLevelILCall MediumLevelILCallRec
-  | MediumLevelILCallSsa MediumLevelILCallSsaRec
+  = MediumLevelILCallSsa MediumLevelILCallSsaRec
   | MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec
-  | MediumLevelILCallUntyped MediumLevelILCallUntypedRec
   deriving (Show, Eq, Ord)
 
 data Constant

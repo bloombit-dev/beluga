@@ -309,10 +309,8 @@ extractCallDestSymbol view callInst =
   case callInst of
     Localcall lc ->
       case lc of
-        (MediumLevelILCall MediumLevelILCallRec {dest = d}) -> processDest d
         (MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d}) -> processDest d
         (MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d}) -> processDest d
-        (MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d}) -> processDest d
     Tailcall tc ->
       case tc of
         (MediumLevelILTailcallUntyped MediumLevelILTailcallUntypedRec {dest = d}) -> processDest d
@@ -884,42 +882,44 @@ create func exprIndex' = do
               }
       pure $ ControlFlow $ MediumLevelILRetHint rec
     MLIL_CALL -> do
-      output' <- getVarList func exprIndex' 0
-      dest' <- getExpr func $ getOp rawInst 2
-      params' <- getExprList func exprIndex' 3
-      let rec =
-            MediumLevelILCallRec
-              { output = output',
-                dest = dest',
-                params = params',
-                core = coreInst
-              }
-      pure $ Localcall $ MediumLevelILCall rec
+      error $ "Unexpected MLIL_CALL in ssa form" ++ show coreInst
+    -- output' <- getVarList func exprIndex' 0
+    -- dest' <- getExpr func $ getOp rawInst 2
+    -- params' <- getExprList func exprIndex' 3
+    -- let rec =
+    --      MediumLevelILCallRec
+    --        { output = output',
+    --          dest = dest',
+    --          params = params',
+    --          core = coreInst
+    --        }
+    -- pure $ Localcall $ MediumLevelILCall rec
     MLIL_CALL_UNTYPED -> do
-      outputInst <- getExpr func $ getOp rawInst 0
-      output' <- case outputInst of
-        _ ->
-          error $
-            "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
-              ++ show outputInst
-      dest' <- getExpr func $ getOp rawInst 1
-      paramsInst <- getExpr func $ getOp rawInst 2
-      params' <- case paramsInst of
-        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
-        _ ->
-          error $
-            "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
-              ++ show outputInst
-      stack' <- getExpr func $ getOp rawInst 3
-      let rec =
-            MediumLevelILCallUntypedRec
-              { output = output',
-                dest = dest',
-                params = params',
-                stack = stack',
-                core = coreInst
-              }
-      pure $ Localcall $ MediumLevelILCallUntyped rec
+      error $ "Unexpected MLIL_CALL_UNTYPED in ssa form" ++ show coreInst
+    -- outputInst <- getExpr func $ getOp rawInst 0
+    -- output' <- case outputInst of
+    --  _ ->
+    --    error $
+    --      "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
+    --        ++ show outputInst
+    -- dest' <- getExpr func $ getOp rawInst 1
+    -- paramsInst <- getExpr func $ getOp rawInst 2
+    -- params' <- case paramsInst of
+    -- MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
+    --  _ ->
+    --    error $
+    --      "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
+    --        ++ show outputInst
+    -- stack' <- getExpr func $ getOp rawInst 3
+    -- let rec =
+    --      MediumLevelILCallUntypedRec
+    --        { output = output',
+    --          dest = dest',
+    --          params = params',
+    --          stack = stack',
+    --          core = coreInst
+    --        }
+    -- pure $ Localcall $ MediumLevelILCallUntyped rec
     MLIL_CALL_PARAM -> do
       src' <- getExprList func exprIndex' 0
       let rec =
@@ -2013,11 +2013,7 @@ create func exprIndex' = do
 children :: MediumLevelILSSAInstruction -> [MediumLevelILSSAInstruction]
 children (Localcall lc) =
   case lc of
-    MediumLevelILCall MediumLevelILCallRec {dest = d, params = p} ->
-      concatMap children p ++ children d ++ p ++ [d]
     MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d, params = p} ->
-      concatMap children p ++ children d ++ p ++ [d]
-    MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d, params = p} ->
       concatMap children p ++ children d ++ p ++ [d]
     MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d, params = p} ->
       concatMap children p ++ children d ++ p ++ [d]
