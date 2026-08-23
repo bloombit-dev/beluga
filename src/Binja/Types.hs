@@ -372,6 +372,8 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
 type TargetMap = [(CULLong, CULLong)]
 
+-- | Note: Algebra.Graph.Labelled provided by Alga will be expanded on its next release
+-- Making it a good candidate to use for the CFGContext graph type.
 data CFGContext = CFGContext
   { graph :: Map.Map BasicBlockMlilSSA (Set.Set BasicBlockEdge),
     entry :: BasicBlockMlilSSA
