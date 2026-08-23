@@ -170,14 +170,13 @@ extractCallDestSymbol context callInst =
 -- __Assumption__: It is assumed the function context is present in the functions
 -- field of AnalysisContext.
 callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
-callers analysisContext functionContext =
+callers analysisContext FunctionContext {instructions = insts} =
   Set.fromList $
     catMaybes $
       Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
         Prelude.filter isCall $
           concat $
-            Prelude.map Binja.Mlil.children $
-              Binja.Types.instructions functionContext
+            Prelude.map Binja.Mlil.children insts
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
     isCall (Localcall _) = True

@@ -18,6 +18,7 @@ module Binja.Mlil
     Binja.Mlil.constantToSymbol,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
+    Binja.Mlil.create,
     Binja.Mlil.instructionsFromFunc,
     Binja.Mlil.instructionsFromFuncNoChildren,
     Binja.Mlil.children,

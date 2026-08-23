@@ -5,10 +5,16 @@ module DependenceGraph
   )
 where
 
+-- TODO: use children for instructions that don't have an output?
+
 import qualified Algebra.Graph.Acyclic.AdjacencyMap as Acyclic
+import qualified Algebra.Graph.AdjacencyMap as AM
 import Binja.Types
 
-type Vertex = Binja.Types.MediumLevelILSSAInstruction
+data Vertex
+  = Inst Binja.Types.MediumLevelILSSAInstruction
+  | SSAVar Binja.Types.BNSSAVariable
+  deriving (Eq, Ord, Show)
 
 type Graph = Acyclic.AdjacencyMap Vertex
 
@@ -20,87 +26,183 @@ data Dependence = Dependence
 create :: AnalysisContext -> MediumLevelILSSAInstruction -> Dependence
 create context inst =
   Dependence
-    { root = inst,
+    { root = Inst inst,
       graph = createAux context inst Acyclic.empty
     }
+
+-- | Add a single edge to the graph if the resulting graph is acyclic
+addEdgeIfAcyclic :: Vertex -> Vertex -> Acyclic.AdjacencyMap Vertex -> Acyclic.AdjacencyMap Vertex
+addEdgeIfAcyclic from to g =
+  case Acyclic.toAcyclic candidate of
+    Just g' -> g'
+    Nothing -> g
+  where
+    candidate = AM.overlay (Acyclic.fromAcyclic g) (AM.edge from to)
+
+-- | Fold a list of edges into a graph, dropping any that would create a cycle.
+addEdgesIfAcyclic :: [(Vertex, Vertex)] -> Graph -> Graph
+addEdgesIfAcyclic edges g0 = foldl (\g (from, to) -> addEdgeIfAcyclic from to g) g0 edges
+
+addUnaryBase :: Vertex -> Vertex -> Graph -> Graph
+addUnaryBase parent node graph' = addEdgeIfAcyclic parent node graph'
+
+addBinaryBase :: Vertex -> Vertex -> Vertex -> Acyclic.AdjacencyMap Vertex -> Acyclic.AdjacencyMap Vertex
+addBinaryBase parent left' right' graph' =
+  addEdgeIfAcyclic parent left' $ addEdgeIfAcyclic parent right' graph'
 
 createAux :: AnalysisContext -> MediumLevelILSSAInstruction -> Graph -> Graph
 createAux context (Localcall lc) graph' =
   case lc of
-    MediumLevelILCall MediumLevelILCallRec {dest = d, params = p} -> graph'
-    MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d, params = p} -> graph'
-    MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d, params = p} -> graph'
-    MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d, params = p} -> graph'
+    MediumLevelILCallSsa MediumLevelILCallSsaRec {output = o, dest = d, params = p} ->
+      addEdgesIfAcyclic (outEdges o ++ paramEdges p) graph'
+    MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {output = o, dest = d, params = p} ->
+      addEdgesIfAcyclic (outEdges o ++ paramEdges p) graph'
+  where
+    outEdges :: [BNSSAVariable] -> [(Vertex, Vertex)]
+    outEdges = map (\node -> (Inst $ Localcall lc, SSAVar node))
+    paramEdges :: [MediumLevelILSSAInstruction] -> [(Vertex, Vertex)]
+    paramEdges = map (\node -> (Inst node, Inst $ Localcall lc))
 createAux context (Constant _) graph' = graph'
 createAux context (Comparison cmp) graph' =
   case cmp of
-    MediumLevelILCmpE MediumLevelILCmpERec {left = l, right = r} -> graph'
-    MediumLevelILFcmpE MediumLevelILFcmpERec {left = l, right = r} -> graph'
-    MediumLevelILCmpNe MediumLevelILCmpNeRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpNe MediumLevelILFcmpNeRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpLt MediumLevelILFcmpLtRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpLe MediumLevelILFcmpLeRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpGe MediumLevelILFcmpGeRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpGt MediumLevelILFcmpGtRec {left = l, right = r} -> graph'
-    MediumLevelILCmpSlt MediumLevelILCmpSltRec {left = l, right = r} -> graph'
-    MediumLevelILCmpUlt MediumLevelILCmpUltRec {left = l, right = r} -> graph'
-    MediumLevelILCmpSle MediumLevelILCmpSleRec {left = l, right = r} -> graph'
-    MediumLevelILCmpUle MediumLevelILCmpUleRec {left = l, right = r} -> graph'
-    MediumLevelILCmpSge MediumLevelILCmpSgeRec {left = l, right = r} -> graph'
-    MediumLevelILCmpUge MediumLevelILCmpUgeRec {left = l, right = r} -> graph'
-    MediumLevelILCmpSgt MediumLevelILCmpSgtRec {left = l, right = r} -> graph'
-    MediumLevelILCmpUgt MediumLevelILCmpUgtRec {left = l, right = r} -> graph'
-    MediumLevelILFcmpO MediumLevelILFcmpORec {left = l, right = r} -> graph'
-    MediumLevelILFcmpUo MediumLevelILFcmpUoRec {left = l, right = r} -> graph'
-    MediumLevelILTestBit MediumLevelILTestBitRec {left = l, right = r} -> graph'
+    MediumLevelILCmpE MediumLevelILCmpERec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpE MediumLevelILFcmpERec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpNe MediumLevelILCmpNeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpNe MediumLevelILFcmpNeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpLt MediumLevelILFcmpLtRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpLe MediumLevelILFcmpLeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpGe MediumLevelILFcmpGeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpGt MediumLevelILFcmpGtRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpSlt MediumLevelILCmpSltRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpUlt MediumLevelILCmpUltRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpSle MediumLevelILCmpSleRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpUle MediumLevelILCmpUleRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpSge MediumLevelILCmpSgeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpUge MediumLevelILCmpUgeRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpSgt MediumLevelILCmpSgtRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILCmpUgt MediumLevelILCmpUgtRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpO MediumLevelILFcmpORec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFcmpUo MediumLevelILFcmpUoRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILTestBit MediumLevelILTestBitRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+  where
+    parent :: Vertex
+    parent = Inst (Comparison cmp)
 createAux context (Arithmetic a) graph' =
   case a of
-    MediumLevelILNeg MediumLevelILNegRec {src = s} -> graph'
-    MediumLevelILNot MediumLevelILNotRec {src = s} -> graph'
-    MediumLevelILSx MediumLevelILSxRec {src = s} -> graph'
-    MediumLevelILZx MediumLevelILZxRec {src = s} -> graph'
-    MediumLevelILLowPart MediumLevelILLowPartRec {src = s} -> graph'
-    MediumLevelILFsqrt MediumLevelILFsqrtRec {src = s} -> graph'
-    MediumLevelILFneg MediumLevelILFnegRec {src = s} -> graph'
-    MediumLevelILFabs MediumLevelILFabsRec {src = s} -> graph'
-    MediumLevelILFloatToInt MediumLevelILFloatToIntRec {src = s} -> graph'
-    MediumLevelILIntToFloat MediumLevelILIntToFloatRec {src = s} -> graph'
-    MediumLevelILFloatConv MediumLevelILFloatConvRec {src = s} -> graph'
-    MediumLevelILRoundToInt MediumLevelILRoundToIntRec {src = s} -> graph'
-    MediumLevelILFloor MediumLevelILFloorRec {src = s} -> graph'
-    MediumLevelILCeil MediumLevelILCeilRec {src = s} -> graph'
-    MediumLevelILFtrunc MediumLevelILFtruncRec {src = s} -> graph'
-    MediumLevelILAdd MediumLevelILAddRec {left = l, right = r} -> graph'
-    MediumLevelILSub MediumLevelILSubRec {left = l, right = r} -> graph'
-    MediumLevelILAnd MediumLevelILAndRec {left = l, right = r} -> graph'
-    MediumLevelILOr MediumLevelILOrRec {left = l, right = r} -> graph'
-    MediumLevelILXor MediumLevelILXorRec {left = l, right = r} -> graph'
-    MediumLevelILLsl MediumLevelILLslRec {left = l, right = r} -> graph'
-    MediumLevelILLsr MediumLevelILLsrRec {left = l, right = r} -> graph'
-    MediumLevelILAsr MediumLevelILAsrRec {left = l, right = r} -> graph'
-    MediumLevelILRol MediumLevelILRolRec {left = l, right = r} -> graph'
-    MediumLevelILRor MediumLevelILRorRec {left = l, right = r} -> graph'
-    MediumLevelILMul MediumLevelILMulRec {left = l, right = r} -> graph'
-    MediumLevelILDivu MediumLevelILDivuRec {left = l, right = r} -> graph'
-    MediumLevelILDivs MediumLevelILDivsRec {left = l, right = r} -> graph'
-    MediumLevelILModu MediumLevelILModuRec {left = l, right = r} -> graph'
-    MediumLevelILMods MediumLevelILModsRec {left = l, right = r} -> graph'
-    MediumLevelILAddOverflow MediumLevelILAddOverflowRec {left = l, right = r} -> graph'
-    MediumLevelILFadd MediumLevelILFaddRec {left = l, right = r} -> graph'
-    MediumLevelILFsub MediumLevelILFsubRec {left = l, right = r} -> graph'
-    MediumLevelILFmul MediumLevelILFmulRec {left = l, right = r} -> graph'
-    MediumLevelILFdiv MediumLevelILFdivRec {left = l, right = r} -> graph'
-    MediumLevelILBswap MediumLevelILBswapRec {src = s} -> graph'
-    MediumLevelILPopcnt MediumLevelILPopcntRec {src = s} -> graph'
-    MediumLevelILClz MediumLevelILClzRec {src = s} -> graph'
-    MediumLevelILCtz MediumLevelILCtzRec {src = s} -> graph'
-    MediumLevelILRbit MediumLevelILRbitRec {src = s} -> graph'
-    MediumLevelILCls MediumLevelILClsRec {src = s} -> graph'
-    MediumLevelILMins MediumLevelILMinsRec {left = l, right = r} -> graph'
-    MediumLevelILMaxs MediumLevelILMaxsRec {left = l, right = r} -> graph'
-    MediumLevelILMinu MediumLevelILMinuRec {left = l, right = r} -> graph'
-    MediumLevelILMaxu MediumLevelILMaxuRec {left = l, right = r} -> graph'
-    MediumLevelILAbs MediumLevelILAbsRec {src = s} -> graph'
+    MediumLevelILNeg MediumLevelILNegRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILNot MediumLevelILNotRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILSx MediumLevelILSxRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILZx MediumLevelILZxRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILLowPart MediumLevelILLowPartRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFsqrt MediumLevelILFsqrtRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFneg MediumLevelILFnegRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFabs MediumLevelILFabsRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFloatToInt MediumLevelILFloatToIntRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILIntToFloat MediumLevelILIntToFloatRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFloatConv MediumLevelILFloatConvRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILRoundToInt MediumLevelILRoundToIntRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFloor MediumLevelILFloorRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILCeil MediumLevelILCeilRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILFtrunc MediumLevelILFtruncRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILAdd MediumLevelILAddRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILSub MediumLevelILSubRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILAnd MediumLevelILAndRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILOr MediumLevelILOrRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILXor MediumLevelILXorRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILLsl MediumLevelILLslRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILLsr MediumLevelILLsrRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILAsr MediumLevelILAsrRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILRol MediumLevelILRolRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILRor MediumLevelILRorRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILMul MediumLevelILMulRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILDivu MediumLevelILDivuRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILDivs MediumLevelILDivsRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILModu MediumLevelILModuRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILMods MediumLevelILModsRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILAddOverflow MediumLevelILAddOverflowRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFadd MediumLevelILFaddRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFsub MediumLevelILFsubRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFmul MediumLevelILFmulRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILFdiv MediumLevelILFdivRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILBswap MediumLevelILBswapRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILPopcnt MediumLevelILPopcntRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILClz MediumLevelILClzRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILCtz MediumLevelILCtzRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILRbit MediumLevelILRbitRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILCls MediumLevelILClsRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+    MediumLevelILMins MediumLevelILMinsRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILMaxs MediumLevelILMaxsRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILMinu MediumLevelILMinuRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILMaxu MediumLevelILMaxuRec {left = l, right = r} ->
+      addBinaryBase parent (Inst l) (Inst r) graph'
+    MediumLevelILAbs MediumLevelILAbsRec {src = s} ->
+      addUnaryBase parent (Inst s) graph'
+  where
+    parent :: Vertex
+    parent = Inst (Arithmetic a)
 createAux context (Terminal t) graph' =
   case t of
     MediumLevelILNoret _ -> graph'

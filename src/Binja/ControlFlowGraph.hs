@@ -24,7 +24,7 @@ create :: BNMlilSSAFunctionPtr -> IO Binja.Types.CFGContext
 create handle' = do
   -- blocks in function
   rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction handle'
-  liftedBlocks <- mapM Binja.BasicBlock.fromBlockPtr rawBlocks
+  liftedBlocks <- mapM (Binja.BasicBlock.fromBlockPtr handle') rawBlocks
   -- entry block
   entryBlock' <-
     case Data.List.find ((0 ==) . start) liftedBlocks of
@@ -32,7 +32,7 @@ create handle' = do
       Just bb -> pure bb
   -- edges from blocks
   rawOutgoingEdges <- mapM Binja.BasicBlock.outgoingEdges rawBlocks
-  outgoingEdges' <- mapM (mapM Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
+  outgoingEdges' <- mapM (mapM (Binja.BasicBlock.fromBlockEdge handle')) rawOutgoingEdges
   let graph' =
         Map.fromList $
           zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'

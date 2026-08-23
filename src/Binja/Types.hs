@@ -538,7 +538,7 @@ data BasicBlockEdge = BasicBlockEdge
 data BasicBlockMlilSSA = BasicBlockMlilSSA
   { handle :: !BNBasicBlockPtr,
     start :: !CSize,
-    end :: !CSize,
+    instructions :: [MediumLevelILSSAInstruction],
     canExit :: !Bool,
     hasInvalidInstructions :: !Bool
   }
