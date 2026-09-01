@@ -898,6 +898,16 @@ pixelTeguVendorModulesFilenames =
     "./test/android/tegu-bp3a.251105.015/vendor_dlkm/lib/modules/wlan_ptracker.ko"
   ]
 
+all :: [String]
+all =
+  mipsFilenames
+    ++ armv7Filenames
+    ++ hexagonFilenames
+    ++ macOSfilenames
+    ++ pixelTeguUserSpaceFilenames
+    ++ pixelTeguLib64Filenames
+    ++ pixelTeguVendorModulesFilenames
+
 main :: IO ()
 main = do
   let options =
@@ -917,16 +927,16 @@ main = do
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
-  forM_ pixelTeguUserSpaceFilenames $ \fname -> do
+  forM_ Main.all $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
-    let functionInstLengths = map (\FunctionContext{instructions=insts} -> length insts) $ functions context
-    let cfgInstLengths = map (sum . map (\BasicBlockMlilSSA{instructions=insts} -> length insts) . Binja.ControlFlowGraph.blocks . cfg) $ functions context
+    let functionInstLengths = map (\FunctionContext {instructions = insts} -> length insts) $ functions context
+    let cfgInstLengths = map (sum . map (\BasicBlockMlilSSA {instructions = insts} -> length insts) . Binja.ControlFlowGraph.blocks . cfg) $ functions context
     if functionInstLengths == cfgInstLengths
       then
-        putStrLn $ " [" ++ (green colors) "*" ++ "] CFG Test: " ++ (magenta colors) "PASS"
+        putStrLn $ " [" ++ (green colors) "*" ++ "] CFG Inst Count Test: " ++ (magenta colors) "PASS"
       else
-        error $ " [" ++ (green colors) "*" ++ "] CFG Test: " ++ (red colors) "FAIL"
+        error $ " [" ++ (green colors) "*" ++ "] CFG Inst Count Test: " ++ (red colors) "FAIL"
     summary' <- summary context
     putStrLn summary'
     Binja.AnalysisContext.close context
