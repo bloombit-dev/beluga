@@ -1,3 +1,5 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Binja.BinaryView
   ( Binja.BinaryView.load,
     Binja.BinaryView.close,
@@ -16,6 +18,7 @@ module Binja.BinaryView
     Binja.BinaryView.functionsByName,
     Binja.BinaryView.symbols,
     Binja.BinaryView.symbolsByName,
+    Binja.BinaryView.dataVars,
     Binja.BinaryView.strings,
     Binja.BinaryView.read,
     Binja.BinaryView.symbolAt,
@@ -119,6 +122,19 @@ getFunctionList view =
 functions :: BNBinaryViewPtr -> IO [BNFunctionPtr]
 functions = fmap flList . getFunctionList
 
+dataVars :: BNBinaryViewPtr -> IO [DataVariable]
+dataVars view =
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetDataVariables view countPtr
+    count' <- fromIntegral <$> peek countPtr
+    xs <-
+      if rawPtr == nullPtr || count' == 0
+        then pure []
+        else peekArray count' rawPtr
+    when (rawPtr /= nullPtr && count' /= 0) $
+      c_BNFreeDataVariables rawPtr (fromIntegral count')
+    pure xs
+
 getEntryFunctionList :: BNBinaryViewPtr -> IO FunctionList
 getEntryFunctionList view =
   alloca $ \countPtr -> do
@@ -151,7 +167,7 @@ functionsByName :: BNBinaryViewPtr -> String -> IO [BNFunctionPtr]
 functionsByName view name' = do
   syms <- symbolsByName view name'
   let funcSyms = filter Binja.Symbol.isFunction syms
-  xs <- mapM (functionsAt view . address) funcSyms
+  xs <- mapM (\Symbol {address = addr} -> functionsAt view addr) funcSyms
   pure $ concat xs
 
 symbols :: BNBinaryViewPtr -> IO [Symbol]

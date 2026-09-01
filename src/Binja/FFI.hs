@@ -451,3 +451,9 @@ foreign import ccall "BNFreeILInstructionList"
 
 foreign import ccall "BNGetArchitectureName"
   c_BNGetArchitectureName :: BNArchPtr -> IO CString
+
+foreign import ccall "BNGetDataVariables"
+  c_BNGetDataVariables :: BNBinaryViewPtr -> Ptr CSize -> IO (Ptr DataVariable)
+
+foreign import ccall "BNFreeDataVariables"
+  c_BNFreeDataVariables :: Ptr DataVariable -> CSize -> IO ()

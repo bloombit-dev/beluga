@@ -52,6 +52,9 @@ module Binja.Types
     BNDataBufferPtr,
     BNReferenceSourcePtr,
     BNArchPtr,
+    DataVariable (..),
+    BNTypeClass (..),
+    BNTypePtr,
     BNMlilFunctionPtr,
     BNMlilSSAFunctionPtr,
     BNLlilFunctionPtr,
@@ -288,10 +291,16 @@ import Foreign.C.String (CString, newCString, peekCString, withCString)
 import Foreign.C.Types (CBool (..), CChar, CInt (..), CSize (..), CUInt (..), CULLong (..))
 import Foreign.Concurrent (newForeignPtr)
 import Foreign.Marshal.Array (peekArray)
+import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr (FunPtr, Ptr, nullFunPtr, nullPtr)
 import GHC.Float (castWord32ToFloat, castWord64ToDouble, float2Double)
 import GHC.ForeignPtr (ForeignPtr)
 import Numeric (showHex)
+
+-- | TODO: This is added here to get around module cycle between FFI.hs and Types.hs.
+-- This will get moved back into FFI.hs after the Types.hs refactor.
+foreign import ccall "BNGetTypeClass"
+  c_BNGetTypeClass :: BNTypePtr -> IO Word8
 
 pointerSize :: Int
 pointerSize = sizeOf (undefined :: Ptr ())
@@ -370,6 +379,10 @@ type BNBasicBlockPtr = Ptr BNBasicBlock_
 
 type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 
+data BNType_
+
+type BNTypePtr = Ptr BNType_
+
 type TargetMap = [(CULLong, CULLong)]
 
 -- | Note: Algebra.Graph.Labelled provided by Alga will be expanded on its next release
@@ -392,7 +405,8 @@ data AnalysisContext = AnalysisContext
     -- Exported functions in shared objects not included.
     entryFunctions :: [FunctionContext],
     symbols :: [Symbol],
-    strings :: [String]
+    strings :: [String],
+    dataVars :: [DataVariable]
     -- image base :: Word64
     -- sections :: [Section]
     -- segments :: [Segment]
@@ -423,6 +437,54 @@ data SSAVariableContext = SSAVariableContext
     useSites :: [MediumLevelILSSAInstruction]
   }
   deriving (Show)
+
+data BNTypeClass
+  = VoidTypeClass
+  | BoolTypeClass
+  | IntegerTypeClass
+  | FloatTypeClass
+  | StructureTypeClass
+  | EnumerationTypeClass
+  | PointerTypeClass
+  | ArrayTypeClass
+  | FunctionTypeClass
+  | VarArgsTypeClass
+  | ValueTypeClass
+  | NamedTypeReferenceClass
+  | WideCharTypeClass
+  | FragmentTypeClass
+  deriving (Show, Eq, Enum)
+
+data DataVariable = DataVariable
+  { address :: !Word64,
+    ty :: !BNTypeClass,
+    autoDiscovered :: !Bool,
+    typeConfidence :: !Word8
+  }
+  deriving (Show)
+
+instance Storable DataVariable where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.alignmentS
+  peek ptr = do
+    address' <- peekByteOff ptr 0
+    ty' <- peekByteOff ptr 8 :: IO BNTypePtr
+    tyClass' <- toEnum <$> fromIntegral <$> c_BNGetTypeClass ty' :: IO BNTypeClass
+    autoDiscovered' <- toBool <$> (peekByteOff ptr 16 :: IO CBool)
+    typeConfidence' <- peekByteOff ptr 17
+    pure
+      DataVariable
+        { address = address',
+          ty = tyClass',
+          autoDiscovered = autoDiscovered',
+          typeConfidence = typeConfidence'
+        }
+
+  poke ptr (DataVariable address' ty' autoDiscovered' typeConfidence') = do
+    pokeByteOff ptr 0 address'
+    pokeByteOff ptr 8 (fromEnum ty')
+    pokeByteOff ptr 16 (fromBool autoDiscovered' :: CBool)
+    pokeByteOff ptr 17 typeConfidence'
 
 data ILIntrinsic = ILIntrinsic
   { index :: !CSize,

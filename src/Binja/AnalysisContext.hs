@@ -69,6 +69,7 @@ create filename' options = do
   entryFunctionContexts <- mapM createFunctionContext entryFunctions'
   symbols' <- Binja.BinaryView.symbols viewHandle'
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
+  dataVars' <- Binja.BinaryView.dataVars viewHandle'
   pure
     AnalysisContext
       { viewHandle = viewHandle',
@@ -77,7 +78,8 @@ create filename' options = do
         entryFunction = entryFunctionContext,
         entryFunctions = entryFunctionContexts,
         symbols = symbols',
-        strings = strings'
+        strings = strings',
+        dataVars = dataVars'
       }
 
 createFunctionContext :: BNFunctionPtr -> IO FunctionContext
@@ -116,7 +118,7 @@ createSSAVariableContext var' func = do
 -- | Acquire the symbol at address if one exists.
 symbolAt :: AnalysisContext -> Word64 -> Maybe Symbol
 symbolAt AnalysisContext {symbols = syms} requestAddr =
-  case Prelude.filter ((requestAddr ==) . address) syms of
+  case Prelude.filter (\Symbol {address = addr} -> (requestAddr ==) addr) syms of
     [] -> Nothing
     [sym] -> Just sym
     _ -> error $ "Binja.AnalysisContext.symbolAt: Multiple symbols at: " ++ show requestAddr
@@ -205,6 +207,7 @@ summary analysisContext = do
       entryFunctions' = magenta colors $ show $ length $ Binja.Types.entryFunctions analysisContext
       stringCount = magenta colors $ show $ length $ Binja.Types.strings analysisContext
       symbolCount = magenta colors $ show $ length $ Binja.Types.symbols analysisContext
+      dataVarCount = magenta colors $ show $ length $ Binja.Types.dataVars analysisContext
   pure $
     " ["
       ++ (green colors) "+"
@@ -240,4 +243,9 @@ summary analysisContext = do
       ++ (green colors) "+"
       ++ "] Symbol count: "
       ++ symbolCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Data Var count: "
+      ++ dataVarCount
       ++ "\n"

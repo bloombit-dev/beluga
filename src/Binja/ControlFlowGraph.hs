@@ -14,12 +14,6 @@ import Data.List (find)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
--- outgoing edges becomes a lookup into the graph
---
--- Note: this could be done once during creation and cached
--- incoming edges becomces filter of the graph of keys with children containing block of interest
---
-
 create :: BNMlilSSAFunctionPtr -> IO Binja.Types.CFGContext
 create handle' = do
   -- blocks in function
