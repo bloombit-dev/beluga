@@ -1,6 +1,9 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Main where
 
 import Binja.AnalysisContext
+import Binja.ControlFlowGraph
 import Binja.FFI
 import Binja.Types
 import Binja.Utils
@@ -914,9 +917,16 @@ main = do
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
-  forM_ mipsFilenames $ \fname -> do
+  forM_ pixelTeguUserSpaceFilenames $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
+    let functionInstLengths = map (\FunctionContext{instructions=insts} -> length insts) $ functions context
+    let cfgInstLengths = map (sum . map (\BasicBlockMlilSSA{instructions=insts} -> length insts) . Binja.ControlFlowGraph.blocks . cfg) $ functions context
+    if functionInstLengths == cfgInstLengths
+      then
+        putStrLn $ " [" ++ (green colors) "*" ++ "] CFG Test: " ++ (magenta colors) "PASS"
+      else
+        error $ " [" ++ (green colors) "*" ++ "] CFG Test: " ++ (red colors) "FAIL"
     summary' <- summary context
     putStrLn summary'
     Binja.AnalysisContext.close context
