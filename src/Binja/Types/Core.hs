@@ -456,6 +456,64 @@ data SSAVariableContext = SSAVariableContext
   }
   deriving (Show)
 
+data BNVariable = BNVariable
+  { varSourceType :: !BNVariableSourceType,
+    varIndex :: !Word32,
+    varStorage :: !Int64
+  }
+  deriving (Eq, Ord, Show)
+
+instance Storable BNVariable where
+  sizeOf _ = 16
+  alignment _ = Binja.Types.Core.alignmentS
+  peek ptr = do
+    t <- peekByteOff ptr 0 :: IO Word8
+    r <- peekByteOff ptr 4 :: IO Word32
+    s <- peekByteOff ptr 8 :: IO Int64
+    pure (BNVariable (toEnum $ fromIntegral t) r s)
+  poke ptr (BNVariable t r s) = do
+    pokeByteOff ptr 0 $ (fromIntegral (fromEnum t) :: Word32)
+    pokeByteOff ptr 4 r
+    pokeByteOff ptr 8 s
+
+data BNSSAVariable = BNSSAVariable
+  { rawVar :: BNVariable,
+    version :: Int
+  }
+  deriving (Eq, Ord, Show)
+
+data BNParameterVariablesWithConfidence = BNParameterVariablesWithConfidence
+  { pvVarPtr :: !(Ptr BNVariable),
+    pvCount :: !CSize,
+    pvConfidence :: !Word8
+  }
+  deriving (Show)
+
+data ParameterVars = ParameterVars
+  { vars :: [BNVariable],
+    confidence :: Int
+  }
+  deriving (Show)
+
+instance Storable BNParameterVariablesWithConfidence where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.Core.alignmentS
+  peek ptr = do
+    varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
+    count' <- peekByteOff ptr 8 :: IO CSize
+    confidence' <- peekByteOff ptr 16 :: IO Word8
+    pure $ BNParameterVariablesWithConfidence varPtr' count' confidence'
+  poke ptr (BNParameterVariablesWithConfidence varPtr' count' confidence') = do
+    pokeByteOff ptr 0 varPtr'
+    pokeByteOff ptr 8 count'
+    pokeByteOff ptr 16 confidence'
+
+data BNVariableSourceType
+  = StackVariableSourceType
+  | RegisterVariableSourceType
+  | FlagVariableSourceType
+  deriving (Eq, Ord, Show, Enum)
+
 data BNTypeClass
   = VoidTypeClass
   | BoolTypeClass
@@ -731,58 +789,6 @@ instance Storable BNStringRef where
     pokeByteOff ptr 8 s
     pokeByteOff ptr 16 l
 
-data BNVariable = BNVariable
-  { varSourceType :: !BNVariableSourceType,
-    varIndex :: !Word32,
-    varStorage :: !Int64
-  }
-  deriving (Eq, Ord, Show)
-
-instance Storable BNVariable where
-  sizeOf _ = 16
-  alignment _ = Binja.Types.Core.alignmentS
-  peek ptr = do
-    t <- peekByteOff ptr 0 :: IO Word8
-    r <- peekByteOff ptr 4 :: IO Word32
-    s <- peekByteOff ptr 8 :: IO Int64
-    pure (BNVariable (toEnum $ fromIntegral t) r s)
-  poke ptr (BNVariable t r s) = do
-    pokeByteOff ptr 0 $ (fromIntegral (fromEnum t) :: Word32)
-    pokeByteOff ptr 4 r
-    pokeByteOff ptr 8 s
-
-data BNSSAVariable = BNSSAVariable
-  { rawVar :: BNVariable,
-    version :: Int
-  }
-  deriving (Eq, Ord, Show)
-
-data BNParameterVariablesWithConfidence = BNParameterVariablesWithConfidence
-  { pvVarPtr :: !(Ptr BNVariable),
-    pvCount :: !CSize,
-    pvConfidence :: !Word8
-  }
-  deriving (Show)
-
-data ParameterVars = ParameterVars
-  { vars :: [BNVariable],
-    confidence :: Int
-  }
-  deriving (Show)
-
-instance Storable BNParameterVariablesWithConfidence where
-  sizeOf _ = 24
-  alignment _ = Binja.Types.Core.alignmentS
-  peek ptr = do
-    varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
-    count' <- peekByteOff ptr 8 :: IO CSize
-    confidence' <- peekByteOff ptr 16 :: IO Word8
-    pure $ BNParameterVariablesWithConfidence varPtr' count' confidence'
-  poke ptr (BNParameterVariablesWithConfidence varPtr' count' confidence') = do
-    pokeByteOff ptr 0 varPtr'
-    pokeByteOff ptr 8 count'
-    pokeByteOff ptr 16 confidence'
-
 data FunctionList = FunctionList
   { flArrayPtr :: !(ForeignPtr BNFunctionPtr),
     flCount :: !Int,
@@ -839,12 +845,6 @@ instance Show Symbol where
 
 data BNStringType = AsciiString | Utf16String | Utf32String | Utf8String
   deriving (Eq, Show, Enum)
-
-data BNVariableSourceType
-  = StackVariableSourceType
-  | RegisterVariableSourceType
-  | FlagVariableSourceType
-  deriving (Eq, Ord, Show, Enum)
 
 data BNLowLevelILInstruction = BNLowLevelILInstruction
   { llOperation :: !Word8,
@@ -1043,6 +1043,84 @@ data BNLowLevelILOperation
   | LLIL_MAXU
   | LLIL_ABS
   deriving (Eq, Show, Enum)
+
+data BNRegisterValueType
+  = UndeterminedValue
+  | EntryValue
+  | ConstantValue
+  | ConstantPointerValue
+  | ExternalPointerValue
+  | StackFrameOffset
+  | ReturnAddressValue
+  | ImportedAddressValue
+  | SignedRangeValue
+  | UnsignedRangeValue
+  | LookupTableValue
+  | InSetOfValues
+  | NotInSetOfValues
+  | ConstantDataValue
+  | ConstantDataZeroExtendValue
+  | ConstantDataSignExtendValue
+  | ConstantDataAggregateValue
+  deriving (Eq, Ord, Show)
+
+instance Enum BNRegisterValueType where
+  fromEnum UndeterminedValue = 0
+  fromEnum EntryValue = 1
+  fromEnum ConstantValue = 2
+  fromEnum ConstantPointerValue = 3
+  fromEnum ExternalPointerValue = 4
+  fromEnum StackFrameOffset = 5
+  fromEnum ReturnAddressValue = 6
+  fromEnum ImportedAddressValue = 7
+  fromEnum SignedRangeValue = 8
+  fromEnum UnsignedRangeValue = 9
+  fromEnum LookupTableValue = 10
+  fromEnum InSetOfValues = 11
+  fromEnum NotInSetOfValues = 12
+  fromEnum ConstantDataValue = 0x8000
+  fromEnum ConstantDataZeroExtendValue = 0x8001
+  fromEnum ConstantDataSignExtendValue = 0x8002
+  fromEnum ConstantDataAggregateValue = 0x8003
+
+  toEnum 0x0000 = UndeterminedValue
+  toEnum 0x0001 = EntryValue
+  toEnum 0x0002 = ConstantValue
+  toEnum 0x0003 = ConstantPointerValue
+  toEnum 0x0004 = ExternalPointerValue
+  toEnum 0x0005 = StackFrameOffset
+  toEnum 0x0006 = ReturnAddressValue
+  toEnum 0x0007 = ImportedAddressValue
+  toEnum 0x0008 = SignedRangeValue
+  toEnum 0x0009 = UnsignedRangeValue
+  toEnum 0x000A = LookupTableValue
+  toEnum 0x000B = InSetOfValues
+  toEnum 0x000C = NotInSetOfValues
+  toEnum 0x8000 = ConstantDataValue
+  toEnum 0x8001 = ConstantDataZeroExtendValue
+  toEnum 0x8002 = ConstantDataSignExtendValue
+  toEnum 0x8003 = ConstantDataAggregateValue
+  toEnum n = error $ "BNRegisterValueType.toEnum: invalid tag " ++ show n
+
+instance Storable BNReferenceSource where
+  sizeOf _ = 24
+  alignment _ = Binja.Types.Core.alignmentS
+  peek ptr = do
+    f <- peekByteOff ptr 0 :: IO BNFunctionPtr
+    a <- peekByteOff ptr 8 :: IO BNArchPtr
+    addr <- peekByteOff ptr 16 :: IO Word64
+    pure $ BNReferenceSource f a addr
+  poke ptr (BNReferenceSource f a addr) = do
+    pokeByteOff ptr 0 f
+    pokeByteOff ptr 8 a
+    pokeByteOff ptr 16 addr
+
+data BNReferenceSource = BNReferenceSource
+  { bnFunc :: !BNFunctionPtr,
+    bnArch :: !BNArchPtr,
+    bnAddr :: !Word64
+  }
+  deriving (Show, Eq)
 
 data BNMediumLevelILOperation
   = MLIL_NOP
@@ -1259,84 +1337,6 @@ instance Storable BNMediumLevelILInstruction where
     pokeByteOff ptr 48 o3
     pokeByteOff ptr 56 o4
     pokeByteOff ptr 64 addr
-
-data BNRegisterValueType
-  = UndeterminedValue
-  | EntryValue
-  | ConstantValue
-  | ConstantPointerValue
-  | ExternalPointerValue
-  | StackFrameOffset
-  | ReturnAddressValue
-  | ImportedAddressValue
-  | SignedRangeValue
-  | UnsignedRangeValue
-  | LookupTableValue
-  | InSetOfValues
-  | NotInSetOfValues
-  | ConstantDataValue
-  | ConstantDataZeroExtendValue
-  | ConstantDataSignExtendValue
-  | ConstantDataAggregateValue
-  deriving (Eq, Ord, Show)
-
-instance Enum BNRegisterValueType where
-  fromEnum UndeterminedValue = 0
-  fromEnum EntryValue = 1
-  fromEnum ConstantValue = 2
-  fromEnum ConstantPointerValue = 3
-  fromEnum ExternalPointerValue = 4
-  fromEnum StackFrameOffset = 5
-  fromEnum ReturnAddressValue = 6
-  fromEnum ImportedAddressValue = 7
-  fromEnum SignedRangeValue = 8
-  fromEnum UnsignedRangeValue = 9
-  fromEnum LookupTableValue = 10
-  fromEnum InSetOfValues = 11
-  fromEnum NotInSetOfValues = 12
-  fromEnum ConstantDataValue = 0x8000
-  fromEnum ConstantDataZeroExtendValue = 0x8001
-  fromEnum ConstantDataSignExtendValue = 0x8002
-  fromEnum ConstantDataAggregateValue = 0x8003
-
-  toEnum 0x0000 = UndeterminedValue
-  toEnum 0x0001 = EntryValue
-  toEnum 0x0002 = ConstantValue
-  toEnum 0x0003 = ConstantPointerValue
-  toEnum 0x0004 = ExternalPointerValue
-  toEnum 0x0005 = StackFrameOffset
-  toEnum 0x0006 = ReturnAddressValue
-  toEnum 0x0007 = ImportedAddressValue
-  toEnum 0x0008 = SignedRangeValue
-  toEnum 0x0009 = UnsignedRangeValue
-  toEnum 0x000A = LookupTableValue
-  toEnum 0x000B = InSetOfValues
-  toEnum 0x000C = NotInSetOfValues
-  toEnum 0x8000 = ConstantDataValue
-  toEnum 0x8001 = ConstantDataZeroExtendValue
-  toEnum 0x8002 = ConstantDataSignExtendValue
-  toEnum 0x8003 = ConstantDataAggregateValue
-  toEnum n = error $ "BNRegisterValueType.toEnum: invalid tag " ++ show n
-
-instance Storable BNReferenceSource where
-  sizeOf _ = 24
-  alignment _ = Binja.Types.Core.alignmentS
-  peek ptr = do
-    f <- peekByteOff ptr 0 :: IO BNFunctionPtr
-    a <- peekByteOff ptr 8 :: IO BNArchPtr
-    addr <- peekByteOff ptr 16 :: IO Word64
-    pure $ BNReferenceSource f a addr
-  poke ptr (BNReferenceSource f a addr) = do
-    pokeByteOff ptr 0 f
-    pokeByteOff ptr 8 a
-    pokeByteOff ptr 16 addr
-
-data BNReferenceSource = BNReferenceSource
-  { bnFunc :: !BNFunctionPtr,
-    bnArch :: !BNArchPtr,
-    bnAddr :: !Word64
-  }
-  deriving (Show, Eq)
 
 data CoreMediumLevelILInstruction = CoreMediumLevelILInstruction
   { instr :: BNMediumLevelILInstruction,
