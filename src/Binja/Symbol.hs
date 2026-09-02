@@ -10,7 +10,7 @@ where
 
 import Binja.FFI
 import Binja.ReferenceSource
-import Binja.Types (BNBinaryViewPtr, BNReferenceSource, BNSymbolPtr, CInt, Symbol (..), SymbolBinding, SymbolType (..), Word64, peekCString)
+import Binja.Types.Core (BNBinaryViewPtr, BNReferenceSource, BNSymbolPtr, CInt, Symbol (..), SymbolBinding, SymbolType (..), Word64, peekCString)
 import Binja.Utils
 
 ty :: BNSymbolPtr -> IO SymbolType
@@ -51,11 +51,11 @@ auto sym = do
   toBool <$> c_BNIsSymbolAutoDefined sym
 
 codeRefs :: BNBinaryViewPtr -> Symbol -> IO [BNReferenceSource]
-codeRefs view sym = Binja.ReferenceSource.codeRefs view (Binja.Types.address sym)
+codeRefs view sym = Binja.ReferenceSource.codeRefs view (Binja.Types.Core.address sym)
 
 isFunction :: Symbol -> Bool
 isFunction sym =
-  case Binja.Types.ty sym of
+  case Binja.Types.Core.ty sym of
     FunctionSymbol -> True
     ImportedFunctionSymbol -> True
     LibraryFunctionSymbol -> True
@@ -69,7 +69,7 @@ create sym = do
   addr <- Binja.Symbol.address sym
   a <- Binja.Symbol.auto sym
   pure
-    Binja.Types.Symbol
+    Binja.Types.Core.Symbol
       { name = nameStr,
         ty = t,
         binding = b,

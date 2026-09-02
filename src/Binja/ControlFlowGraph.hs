@@ -9,12 +9,12 @@ module Binja.ControlFlowGraph
 where
 
 import Binja.BasicBlock
-import Binja.Types (BNMlilSSAFunctionPtr, BasicBlockMlilSSA (..), CFGContext (..))
+import Binja.Types.Core (BNMlilSSAFunctionPtr, BasicBlockMlilSSA (..), CFGContext (..))
 import Data.List (find)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-create :: BNMlilSSAFunctionPtr -> IO Binja.Types.CFGContext
+create :: BNMlilSSAFunctionPtr -> IO Binja.Types.Core.CFGContext
 create handle' = do
   -- blocks in function
   rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction handle'
@@ -30,16 +30,16 @@ create handle' = do
   let graph' =
         Map.fromList $
           zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'
-  pure $ Binja.Types.CFGContext {entry = entryBlock', graph = graph'}
+  pure $ Binja.Types.Core.CFGContext {entry = entryBlock', graph = graph'}
 
 -- | List of blocks making up function
-blocks :: Binja.Types.CFGContext -> [BasicBlockMlilSSA]
+blocks :: Binja.Types.Core.CFGContext -> [BasicBlockMlilSSA]
 blocks = Map.keys . graph
 
 -- | Number of nodes
-order :: Binja.Types.CFGContext -> Int
+order :: Binja.Types.Core.CFGContext -> Int
 order = Map.size . graph
 
 -- | Numer of edges
-size :: Binja.Types.CFGContext -> Int
+size :: Binja.Types.Core.CFGContext -> Int
 size = sum . map Set.size . Map.elems . graph

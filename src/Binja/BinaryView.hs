@@ -29,7 +29,7 @@ import Binja.FFI
 import Binja.Function
 import Binja.Plugin
 import Binja.Symbol
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -263,7 +263,7 @@ read view addr len = do
           c_BNFreeDataBuffer dataBuffer
           pure $ Just bs
 
-symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Symbol)
+symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Core.Symbol)
 symbolAt view addr = do
   symbolPtr <- c_BNGetSymbolByAddress view addr nullPtr
   if symbolPtr == nullPtr

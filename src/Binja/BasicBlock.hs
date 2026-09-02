@@ -12,7 +12,7 @@ where
 
 import Binja.FFI
 import Binja.Mlil (create)
-import Binja.Types (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
+import Binja.Types.Core (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
 import Binja.Utils (toBool)
 
 fromMlilFunction :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]

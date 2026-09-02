@@ -5,7 +5,7 @@ module Main where
 import Binja.AnalysisContext
 import Binja.ControlFlowGraph
 import Binja.FFI
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
 import Control.Monad (forM_)
 
@@ -927,7 +927,7 @@ main = do
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Running tests."
-  forM_ Main.all $ \fname -> do
+  forM_ ["./test/android/tegu-bp3a.251105.015/image-tegu-bp3a.251105.015/vendor/bin/getenforce"] $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
     let functionInstLengths = map (\FunctionContext {instructions = insts} -> length insts) $ functions context

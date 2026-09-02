@@ -2,7 +2,7 @@
 
 module Binja.FFI where
 
-import Binja.Types
+import Binja.Types.Core
 
 foreign import ccall unsafe "BNGetCachedMediumLevelILPossibleValueSetPtr"
   c_BNGetCachedMediumLevelILPossibleValueSetPtr ::

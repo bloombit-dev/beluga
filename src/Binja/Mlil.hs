@@ -30,7 +30,7 @@ import Binja.FFI
 import Binja.Function
 import Binja.Llil
 import Binja.ReferenceSource
-import Binja.Types
+import Binja.Types.Core
 import Control.Monad (zipWithM)
 import Data.Maybe (catMaybes)
 

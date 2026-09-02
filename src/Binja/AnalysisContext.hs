@@ -35,7 +35,7 @@ import Binja.BinaryView
 import Binja.ControlFlowGraph
 import Binja.Function
 import Binja.Mlil
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
 import Data.Map as Map
 import Data.Maybe (catMaybes)
@@ -198,16 +198,16 @@ close = Binja.BinaryView.close . viewHandle
 summary :: AnalysisContext -> IO String
 summary analysisContext = do
   colors <- Binja.Utils.getColors
-  let functionCount = magenta colors $ show $ length $ Binja.Types.functions analysisContext
-      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
+  let functionCount = magenta colors $ show $ length $ Binja.Types.Core.functions analysisContext
+      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.Core.functions analysisContext
       entryFunction' =
-        case Binja.Types.entryFunction analysisContext of
+        case Binja.Types.Core.entryFunction analysisContext of
           Nothing -> magenta colors $ "No entry function."
-          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.symbol f)
-      entryFunctions' = magenta colors $ show $ length $ Binja.Types.entryFunctions analysisContext
-      stringCount = magenta colors $ show $ length $ Binja.Types.strings analysisContext
-      symbolCount = magenta colors $ show $ length $ Binja.Types.symbols analysisContext
-      dataVarCount = magenta colors $ show $ length $ Binja.Types.dataVars analysisContext
+          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.Core.symbol f)
+      entryFunctions' = magenta colors $ show $ length $ Binja.Types.Core.entryFunctions analysisContext
+      stringCount = magenta colors $ show $ length $ Binja.Types.Core.strings analysisContext
+      symbolCount = magenta colors $ show $ length $ Binja.Types.Core.symbols analysisContext
+      dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
   pure $
     " ["
       ++ (green colors) "+"

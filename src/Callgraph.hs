@@ -21,11 +21,11 @@ module Callgraph
 where
 
 import Binja.AnalysisContext
-import Binja.Types
+import Binja.Types.Core
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-type Vertex = Binja.Types.Symbol
+type Vertex = Binja.Types.Core.Symbol
 
 type Graph = Map.Map Vertex (Set.Set Vertex)
 

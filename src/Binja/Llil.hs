@@ -20,7 +20,7 @@ where
 import Binja.BinaryView (functionsContaining)
 import Binja.FFI
 import Binja.Function
-import Binja.Types
+import Binja.Types.Core
 
 sourceFunc :: BNLlilFunctionPtr -> IO BNFunctionPtr
 sourceFunc func = do

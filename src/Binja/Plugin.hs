@@ -9,7 +9,7 @@ module Binja.Plugin
 where
 
 import Binja.FFI
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
 import Data.Bool (bool)
 

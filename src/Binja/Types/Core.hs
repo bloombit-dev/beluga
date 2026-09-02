@@ -1,6 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Binja.Types
+module Binja.Types.Core
   ( CSize (..),
     CBool (..),
     CInt (..),
@@ -53,6 +53,8 @@ module Binja.Types
     BNReferenceSourcePtr,
     BNArchPtr,
     DataVariable (..),
+    BNTypeWithConfidence (..),
+    BNBoolWithConfidence (..),
     BNTypeClass (..),
     BNTypePtr,
     BNMlilFunctionPtr,
@@ -89,7 +91,7 @@ module Binja.Types
     Symbol (..),
     BNRegisterValueType (..),
     BNReferenceSource (..),
-    Binja.Types.alignmentS,
+    Binja.Types.Core.alignmentS,
     getArch,
     getIntrinsic,
     CoreMediumLevelILInstruction (..),
@@ -273,6 +275,7 @@ module Binja.Types
   )
 where
 
+import qualified Data.ByteString as BS
 import Control.Exception (finally)
 import Control.Monad (forM, when)
 import Data.Bits ((.&.))
@@ -301,6 +304,24 @@ import Numeric (showHex)
 -- This will get moved back into FFI.hs after the Types.hs refactor.
 foreign import ccall "BNGetTypeClass"
   c_BNGetTypeClass :: BNTypePtr -> IO Word8
+
+foreign import ccall "BNGetTypeWidth"
+  c_BNGetTypeWidth :: BNTypePtr -> IO Word64
+
+foreign import ccall "BNGetTypeAlignment"
+  c_BNGetTypeAlignment :: BNTypePtr -> IO CSize
+
+foreign import ccall "BNIsTypeSignedPtr"
+  c_BNIsTypeSignedPtr :: Ptr BNBoolWithConfidence -> BNTypePtr -> IO ()
+
+foreign import ccall "BNIsTypeConstPtr"
+  c_BNIsTypeConstPtr :: Ptr BNBoolWithConfidence -> BNTypePtr -> IO ()
+
+foreign import ccall "BNIsTypeVolatilePtr"
+  c_BNIsTypeVolatilePtr :: Ptr BNBoolWithConfidence -> BNTypePtr -> IO ()
+
+foreign import ccall "BNGetChildTypePtr"
+  c_BNGetChildTypePtr :: Ptr BNTypeWithConfidence -> BNTypePtr -> IO ()
 
 pointerSize :: Int
 pointerSize = sizeOf (undefined :: Ptr ())
@@ -455,32 +476,109 @@ data BNTypeClass
   | FragmentTypeClass
   deriving (Show, Eq, Enum)
 
+data BNTypeWithConfidence = BNTypeWithConfidence
+  { ty :: BNTypePtr,
+    confidence :: Word8
+  }
+  deriving (Show)
+
+instance Storable BNTypeWithConfidence where
+  sizeOf _ = 16
+  alignment _ = Binja.Types.Core.alignmentS
+  peek ptr = do
+    value' <- peekByteOff ptr 0 :: IO BNTypePtr
+    confidence' <- peekByteOff ptr 8
+    pure
+      BNTypeWithConfidence
+        { ty = value',
+          confidence = confidence'
+        }
+  poke ptr (BNTypeWithConfidence ty' confidence') = do
+    pokeByteOff ptr 0 ty'
+    pokeByteOff ptr 8 confidence'
+
+data BNBoolWithConfidence = BNBoolWithConfidence
+  { value :: Bool,
+    confidence :: Word8
+  }
+  deriving (Show)
+
+instance Storable BNBoolWithConfidence where
+  sizeOf _ = 2
+  alignment _ = Binja.Types.Core.alignmentS
+  peek ptr = do
+    value' <- toBool <$> (peekByteOff ptr 0 :: IO CBool)
+    confidence' <- peekByteOff ptr 1
+    pure
+      BNBoolWithConfidence
+        { value = value',
+          confidence = confidence'
+        }
+  poke ptr (BNBoolWithConfidence value' confidence') = do
+    pokeByteOff ptr 0 (fromBool value' :: CBool)
+    pokeByteOff ptr 1 confidence'
+
 data DataVariable = DataVariable
   { address :: !Word64,
     ty :: !BNTypeClass,
     autoDiscovered :: !Bool,
-    typeConfidence :: !Word8
+    typeConfidence :: !Word8,
+    width :: !Word64,
+    alignment :: !CSize,
+    isSigned :: BNBoolWithConfidence,
+    isConst :: BNBoolWithConfidence,
+    isVolatile :: BNBoolWithConfidence,
+    bytes :: Maybe BS.ByteString
   }
   deriving (Show)
 
 instance Storable DataVariable where
   sizeOf _ = 24
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     address' <- peekByteOff ptr 0
     ty' <- peekByteOff ptr 8 :: IO BNTypePtr
     tyClass' <- toEnum <$> fromIntegral <$> c_BNGetTypeClass ty' :: IO BNTypeClass
     autoDiscovered' <- toBool <$> (peekByteOff ptr 16 :: IO CBool)
     typeConfidence' <- peekByteOff ptr 17
+    width' <- c_BNGetTypeWidth ty'
+    alignment' <- c_BNGetTypeAlignment ty'
+    isSigned' <- alloca $ \ptr' -> do
+      c_BNIsTypeSignedPtr ptr' ty'
+      peek ptr'
+    isConst' <- alloca $ \ptr' -> do
+      c_BNIsTypeConstPtr ptr' ty'
+      peek ptr'
+    isVolatile' <- alloca $ \ptr' -> do
+      c_BNIsTypeVolatilePtr ptr' ty'
+      peek ptr'
+    --if tyClass' == ArrayTypeClass
+    --  then do
+    --    alloca $ \ptr' -> do
+    --      c_BNGetChildTypePtr ptr' ty'
+    --      peeked <- peek ptr'
+    --      let childTy' = (\BNTypeWithConfidence{ty=t} -> t) peeked
+    --      liftedTyClass <- (toEnum <$> fromIntegral <$> c_BNGetTypeClass childTy') :: IO BNTypeClass
+    --      _ <- Prelude.print $ "ArrayTypeClass with child type: " ++ (show (liftedTyClass :: BNTypeClass)) ++ " at 0x" ++ (showHex address' "")
+    --      pure ()
+    --  else do
+    --    pure ()
+    --bytes' <- BinaryView.read address' width'
     pure
       DataVariable
         { address = address',
           ty = tyClass',
           autoDiscovered = autoDiscovered',
-          typeConfidence = typeConfidence'
+          typeConfidence = typeConfidence',
+          width = width',
+          alignment = alignment',
+          isSigned = isSigned',
+          isConst = isConst',
+          isVolatile = isVolatile',
+          bytes = Nothing
         }
 
-  poke ptr (DataVariable address' ty' autoDiscovered' typeConfidence') = do
+  poke ptr (DataVariable address' ty' autoDiscovered' typeConfidence' _ _ _ _ _ _) = do
     pokeByteOff ptr 0 address'
     pokeByteOff ptr 8 (fromEnum ty')
     pokeByteOff ptr 16 (fromBool autoDiscovered' :: CBool)
@@ -610,7 +708,7 @@ data BasicBlockMlilSSA = BasicBlockMlilSSA
 
 instance Storable BNBasicBlockEdge where
   sizeOf _ = 24
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     ty' <- peekByteOff ptr 0 :: IO Word8
     target' <- peekByteOff ptr 8
@@ -669,7 +767,7 @@ data BNPossibleValueSet = BNPossibleValueSet
 
 instance Storable BNPossibleValueSet where
   sizeOf _ = 64
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     rvt <- peekByteOff ptr 0 :: IO Word32
     val <- peekByteOff ptr 8
@@ -708,7 +806,7 @@ data BNStringRef = BNStringRef
 
 instance Storable BNStringRef where
   sizeOf _ = 24
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     t <- peekByteOff ptr 0 :: IO Word8
     s <- peekByteOff ptr 8 :: IO Word64
@@ -728,7 +826,7 @@ data BNVariable = BNVariable
 
 instance Storable BNVariable where
   sizeOf _ = 16
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     t <- peekByteOff ptr 0 :: IO Word8
     r <- peekByteOff ptr 4 :: IO Word32
@@ -760,7 +858,7 @@ data ParameterVars = ParameterVars
 
 instance Storable BNParameterVariablesWithConfidence where
   sizeOf _ = 24
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     varPtr' <- peekByteOff ptr 0 :: IO (Ptr BNVariable)
     count' <- peekByteOff ptr 8 :: IO CSize
@@ -850,7 +948,7 @@ data BNLowLevelILInstruction = BNLowLevelILInstruction
 
 instance Storable BNLowLevelILInstruction where
   sizeOf _ = 64
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     op <- peekByteOff ptr 0 :: IO Word8
     attr <- peekByteOff ptr 4
@@ -1211,7 +1309,7 @@ data BNMediumLevelILInstruction = BNMediumLevelILInstruction
 
 instance Storable BNMediumLevelILInstruction where
   sizeOf _ = 72
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     op <- peekByteOff ptr 0 :: IO Word8
     attr <- peekByteOff ptr 4 :: IO Word32
@@ -1308,7 +1406,7 @@ instance Enum BNRegisterValueType where
 
 instance Storable BNReferenceSource where
   sizeOf _ = 24
-  alignment _ = Binja.Types.alignmentS
+  alignment _ = Binja.Types.Core.alignmentS
   peek ptr = do
     f <- peekByteOff ptr 0 :: IO BNFunctionPtr
     a <- peekByteOff ptr 8 :: IO BNArchPtr
