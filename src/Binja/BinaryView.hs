@@ -16,6 +16,7 @@ module Binja.BinaryView
     Binja.BinaryView.functionsContaining,
     Binja.BinaryView.functionsAt,
     Binja.BinaryView.functionsByName,
+    Binja.BinaryView.segments,
     Binja.BinaryView.symbols,
     Binja.BinaryView.symbolsByName,
     Binja.BinaryView.dataVars,
@@ -31,6 +32,7 @@ import Binja.Plugin
 import Binja.Symbol
 import Binja.Types.Core
 import Binja.Utils
+import Data.Bits (testBit)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -121,6 +123,42 @@ getFunctionList view =
 
 functions :: BNBinaryViewPtr -> IO [BNFunctionPtr]
 functions = fmap flList . getFunctionList
+
+getSegmentList :: BNBinaryViewPtr -> IO [BNSegmentPtr]
+getSegmentList view =
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetSegments view countPtr
+    count' <- fromIntegral <$> peek countPtr
+    segmentHandles <- peekArray count' rawPtr
+    c_BNFreeSegmentList rawPtr $ fromIntegral count'
+    pure segmentHandles
+
+segments :: BNBinaryViewPtr -> IO [Segment]
+segments view = do
+  segmentHandles <- getSegmentList view
+  mapM createSegment segmentHandles
+  where
+    segmentExecutableBit = 0
+    segmentWritableBit = 1
+    segmentReadableBit = 2
+    createSegment :: BNSegmentPtr -> IO Segment
+    createSegment segmentHandle = do
+      start' <- c_BNSegmentGetStart segmentHandle
+      end' <- c_BNSegmentGetEnd segmentHandle
+      flags' <- c_BNSegmentGetFlags segmentHandle
+      -- 1,2,4 from SegmentFlag
+      let executable' = testBit flags' segmentExecutableBit
+      let writable' = testBit flags' segmentWritableBit
+      let readable' = testBit flags' segmentReadableBit
+      pure
+        Segment
+          { handle = segmentHandle,
+            start = start',
+            end = end',
+            executable = executable',
+            writable = writable',
+            readable = readable'
+          }
 
 dataVars :: BNBinaryViewPtr -> IO [DataVariable]
 dataVars view =

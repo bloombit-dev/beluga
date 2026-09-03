@@ -53,6 +53,7 @@ module Binja.Types.Core
     BNReferenceSourcePtr,
     Binja.Types.Arch.BNArchPtr,
     DataVariable (..),
+    Segment (..),
     BNSegmentPtr,
     BNTypeWithConfidence (..),
     BNBoolWithConfidence (..),
@@ -408,8 +409,8 @@ data AnalysisContext = AnalysisContext
     strings :: [String],
     dataVars :: [DataVariable],
     imageBase :: Word64,
-    entryPoint :: Word64
-    -- segments :: [Segment]
+    entryPoint :: Word64,
+    segments :: [Segment]
   }
 
 -- | Higher level abstraction of a medium level IL SSA variant function

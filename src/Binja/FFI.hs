@@ -213,6 +213,15 @@ foreign import ccall unsafe "BNGetSegments"
 foreign import ccall "BNFreeSegmentList"
   c_BNFreeSegmentList :: Ptr BNSegmentPtr -> CSize -> IO ()
 
+foreign import ccall "BNSegmentGetStart"
+  c_BNSegmentGetStart :: BNSegmentPtr -> IO Word64
+
+foreign import ccall "BNSegmentGetEnd"
+  c_BNSegmentGetEnd :: BNSegmentPtr -> IO Word64
+
+foreign import ccall "BNSegmentGetFlags"
+  c_BNSegmentGetFlags :: BNSegmentPtr -> IO Word32
+
 foreign import ccall unsafe "BNGetSymbols"
   c_BNGetSymbols ::
     BNBinaryViewPtr ->

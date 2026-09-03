@@ -73,6 +73,7 @@ create filename' options = do
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
   imageBase' <- c_BNGetImageBase viewHandle'
   entryPoint' <- c_BNGetEntryPoint viewHandle'
+  segments' <- Binja.BinaryView.segments viewHandle'
   -- Only keep full confidence data variables
   dataVars' <- Prelude.filter (\DataVariable {typeConfidence = tc} -> tc == 255) <$> Binja.BinaryView.dataVars viewHandle'
   pure
@@ -86,7 +87,8 @@ create filename' options = do
         strings = strings',
         imageBase = imageBase',
         entryPoint = entryPoint',
-        dataVars = dataVars'
+        dataVars = dataVars',
+        segments = segments'
       }
 
 createFunctionContext :: BNFunctionPtr -> IO FunctionContext
@@ -217,6 +219,7 @@ summary analysisContext = do
       dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
       imageBase' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.imageBase analysisContext
       entryPoint' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.entryPoint analysisContext
+      segmentCount = magenta colors $ ("0x" ++) $ show $ length $ Binja.Types.Core.segments analysisContext
   pure $
     " ["
       ++ (green colors) "+"
@@ -267,4 +270,9 @@ summary analysisContext = do
       ++ (green colors) "+"
       ++ "] Entry point address: "
       ++ entryPoint'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Segment count: "
+      ++ segmentCount
       ++ "\n"
