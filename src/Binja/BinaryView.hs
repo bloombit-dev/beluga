@@ -251,17 +251,25 @@ decodeByType ty' = go
 
 read :: BNBinaryViewPtr -> Word64 -> CSize -> IO (Maybe BS.ByteString)
 read view addr len = do
-  dataBuffer <- c_BNReadViewBuffer view addr len
-  if dataBuffer == nullPtr
-    then pure Nothing
+  if addr < 0 || len < 0
+    then
+      error $
+        "Address and length must be positive, address: "
+          ++ show addr
+          ++ " , length: "
+          ++ show len
     else do
-      dataPtr <- c_BNGetDataBufferContents dataBuffer
-      if dataPtr == nullPtr
+      dataBuffer <- c_BNReadViewBuffer view addr len
+      if dataBuffer == nullPtr
         then pure Nothing
         else do
-          bs <- BS.packCStringLen (dataPtr, fromIntegral len)
-          c_BNFreeDataBuffer dataBuffer
-          pure $ Just bs
+          dataPtr <- c_BNGetDataBufferContents dataBuffer
+          if dataPtr == nullPtr
+            then pure Nothing
+            else do
+              bs <- BS.packCStringLen (dataPtr, fromIntegral len)
+              c_BNFreeDataBuffer dataBuffer
+              pure $ Just bs
 
 symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Core.Symbol)
 symbolAt view addr = do
