@@ -86,15 +86,15 @@ mostCalled :: Graph -> Maybe Vertex
 mostCalled graph' =
   case Callgraph.vertices graph' of
     [] -> Nothing
-    v : vs -> Just $ fst $ foldr step (v, value v) vs
+    v : vs -> Just $ fst $ foldr step (v, value' v) vs
   where
-    value :: Vertex -> Int
-    value v = length (Callgraph.callers graph' v)
+    value' :: Vertex -> Int
+    value' v = length (Callgraph.callers graph' v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
-      if curVal < value candidate
-        then (candidate, value candidate)
+      if curVal < value' candidate
+        then (candidate, value' candidate)
         else (curVertex, curVal)
 
 -- | Find the vertex with the maximum sum of callers and callees.
@@ -104,17 +104,17 @@ mostConnected :: Graph -> Maybe Vertex
 mostConnected graph' =
   case Callgraph.vertices graph' of
     [] -> Nothing
-    v : vs -> Just $ fst $ foldr step (v, value v) vs
+    v : vs -> Just $ fst $ foldr step (v, value' v) vs
   where
-    value :: Vertex -> Int
-    value v =
+    value' :: Vertex -> Int
+    value' v =
       length (Callgraph.callers graph' v)
         + length (callees graph' v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
-      if curVal < value candidate
-        then (candidate, value candidate)
+      if curVal < value' candidate
+        then (candidate, value' candidate)
         else (curVertex, curVal)
 
 -- | Is destination vertex reachable from source vertex
