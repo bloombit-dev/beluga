@@ -165,10 +165,13 @@ getSectionList :: BNBinaryViewPtr -> IO [BNSectionPtr]
 getSectionList view = do
   alloca $ \countPtr -> do
     rawPtr <- c_BNGetSections view countPtr
-    count' <- fromIntegral <$> peek countPtr
-    sectionHandles <- peekArray count' rawPtr
-    c_BNFreeSectionList rawPtr $ fromIntegral count'
-    pure sectionHandles
+    if rawPtr == nullPtr
+      then error "Binja.BinaryView.getSectionList.BNGetSections returned null"
+      else do
+        count' <- fromIntegral <$> peek countPtr
+        sectionHandles <- peekArray count' rawPtr
+        c_BNFreeSectionList rawPtr $ fromIntegral count'
+        pure sectionHandles
 
 sections :: BNBinaryViewPtr -> IO [Section]
 sections view = do
