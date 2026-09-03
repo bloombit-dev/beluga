@@ -457,3 +457,9 @@ foreign import ccall "BNGetDataVariables"
 
 foreign import ccall "BNFreeDataVariables"
   c_BNFreeDataVariables :: Ptr DataVariable -> CSize -> IO ()
+
+foreign import ccall "BNGetImageBase"
+  c_BNGetImageBase :: BNBinaryViewPtr -> IO Word64
+
+foreign import ccall "BNGetEntryPoint"
+  c_BNGetEntryPoint :: BNBinaryViewPtr -> IO Word64

@@ -33,6 +33,7 @@ where
 
 import Binja.BinaryView
 import Binja.ControlFlowGraph
+import Binja.FFI (c_BNGetEntryPoint, c_BNGetImageBase)
 import Binja.Function
 import Binja.Mlil
 import Binja.Types.Core
@@ -40,6 +41,7 @@ import Binja.Utils
 import Data.Map as Map
 import Data.Maybe (catMaybes)
 import Data.Set as Set
+import Numeric (showHex)
 
 -- |
 --
@@ -69,6 +71,8 @@ create filename' options = do
   entryFunctionContexts <- mapM createFunctionContext entryFunctions'
   symbols' <- Binja.BinaryView.symbols viewHandle'
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
+  imageBase' <- c_BNGetImageBase viewHandle'
+  entryPoint' <- c_BNGetEntryPoint viewHandle'
   -- Only keep full confidence data variables
   dataVars' <- Prelude.filter (\DataVariable {typeConfidence = tc} -> tc == 255) <$> Binja.BinaryView.dataVars viewHandle'
   pure
@@ -80,6 +84,8 @@ create filename' options = do
         entryFunctions = entryFunctionContexts,
         symbols = symbols',
         strings = strings',
+        imageBase = imageBase',
+        entryPoint = entryPoint',
         dataVars = dataVars'
       }
 
@@ -209,6 +215,8 @@ summary analysisContext = do
       stringCount = magenta colors $ show $ length $ Binja.Types.Core.strings analysisContext
       symbolCount = magenta colors $ show $ length $ Binja.Types.Core.symbols analysisContext
       dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
+      imageBase' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.imageBase analysisContext
+      entryPoint' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.entryPoint analysisContext
   pure $
     " ["
       ++ (green colors) "+"
@@ -247,6 +255,16 @@ summary analysisContext = do
       ++ "\n"
       ++ " ["
       ++ (green colors) "+"
-      ++ "] Data Var count: "
+      ++ "] Full confidence DataVariable count: "
       ++ dataVarCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Image base address: "
+      ++ imageBase'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry point address: "
+      ++ entryPoint'
       ++ "\n"

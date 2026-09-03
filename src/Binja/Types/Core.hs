@@ -401,9 +401,9 @@ data AnalysisContext = AnalysisContext
     entryFunctions :: [FunctionContext],
     symbols :: [Symbol],
     strings :: [String],
-    dataVars :: [DataVariable]
-    -- image base :: Word64
-    -- sections :: [Section]
+    dataVars :: [DataVariable],
+    imageBase :: Word64,
+    entryPoint :: Word64
     -- segments :: [Segment]
   }
 
@@ -2637,18 +2637,6 @@ instance Storable DataVariable where
     isVolatile' <- alloca $ \ptr' -> do
       c_BNIsTypeVolatilePtr ptr' ty'
       peek ptr'
-    -- if tyClass' == ArrayTypeClass
-    --  then do
-    --    alloca $ \ptr' -> do
-    --      c_BNGetChildTypePtr ptr' ty'
-    --      peeked <- peek ptr'
-    --      let childTy' = (\BNTypeWithConfidence{ty=t} -> t) peeked
-    --      liftedTyClass <- (toEnum <$> fromIntegral <$> c_BNGetTypeClass childTy') :: IO BNTypeClass
-    --      _ <- Prelude.print $ "ArrayTypeClass with child type: " ++ (show (liftedTyClass :: BNTypeClass)) ++ " at 0x" ++ (showHex address' "")
-    --      pure ()
-    --  else do
-    --    pure ()
-    -- bytes' <- BinaryView.read address' width'
     pure
       DataVariable
         { address = address',
