@@ -204,6 +204,15 @@ foreign import ccall unsafe "BNGetAnalysisFunctionList"
 foreign import ccall unsafe "BNFreeFunctionList"
   c_BNFreeFunctionList :: Ptr BNFunctionPtr -> CSize -> IO ()
 
+foreign import ccall unsafe "BNGetSegments"
+  c_BNGetSegments ::
+    BNBinaryViewPtr ->
+    Ptr CSize ->
+    IO (Ptr BNSegmentPtr)
+
+foreign import ccall "BNFreeSegmentList"
+  c_BNFreeSegmentList :: Ptr BNSegmentPtr -> CSize -> IO ()
+
 foreign import ccall unsafe "BNGetSymbols"
   c_BNGetSymbols ::
     BNBinaryViewPtr ->

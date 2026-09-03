@@ -53,6 +53,7 @@ module Binja.Types.Core
     BNReferenceSourcePtr,
     Binja.Types.Arch.BNArchPtr,
     DataVariable (..),
+    BNSegmentPtr,
     BNTypeWithConfidence (..),
     BNBoolWithConfidence (..),
     BNTypeClass (..),
@@ -377,6 +378,10 @@ type BNBasicBlockEdgePtr = Ptr BNBasicBlockEdge
 data BNType_
 
 type BNTypePtr = Ptr BNType_
+
+data BNSegment_
+
+type BNSegmentPtr = Ptr BNSegment_
 
 type TargetMap = [(CULLong, CULLong)]
 
@@ -2677,3 +2682,13 @@ foreign import ccall "BNIsTypeVolatilePtr"
 
 foreign import ccall "BNGetChildTypePtr"
   c_BNGetChildTypePtr :: Ptr BNTypeWithConfidence -> BNTypePtr -> IO ()
+
+data Segment = Segment
+  { handle :: BNSegmentPtr,
+    start :: Word64,
+    end :: Word64,
+    executable :: Bool,
+    writable :: Bool,
+    readable :: Bool
+  }
+  deriving (Show)
