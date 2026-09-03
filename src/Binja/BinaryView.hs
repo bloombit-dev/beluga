@@ -17,6 +17,7 @@ module Binja.BinaryView
     Binja.BinaryView.functionsAt,
     Binja.BinaryView.functionsByName,
     Binja.BinaryView.segments,
+    Binja.BinaryView.sections,
     Binja.BinaryView.symbols,
     Binja.BinaryView.symbolsByName,
     Binja.BinaryView.dataVars,
@@ -160,6 +161,41 @@ segments view = do
             readable = readable'
           }
 
+getSectionList :: BNBinaryViewPtr -> IO [BNSectionPtr]
+getSectionList view = do
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetSections view countPtr
+    if rawPtr == nullPtr
+      then error "Binja.BinaryView.getSectionList.BNGetSections returned null"
+      else do
+        count' <- fromIntegral <$> peek countPtr
+        sectionHandles <- peekArray count' rawPtr
+        c_BNFreeSectionList rawPtr $ fromIntegral count'
+        pure sectionHandles
+
+sections :: BNBinaryViewPtr -> IO [Section]
+sections view = do
+  sectionHandles <- getSectionList view
+  mapM createSection sectionHandles
+  where
+    createSection :: BNSectionPtr -> IO Section
+    createSection sectionPtr = do
+      nameCString <- c_BNSectionGetName sectionPtr
+      name' <- peekCString nameCString
+      start' <- c_BNSectionGetStart sectionPtr
+      end' <- c_BNSectionGetEnd sectionPtr
+      semantics' <- toEnum <$> fromIntegral <$> c_BNSectionGetSemantics sectionPtr
+      align' <- c_BNSectionGetAlign sectionPtr
+      pure
+        Section
+          { handle = sectionPtr,
+            name = name',
+            start = start',
+            end = end',
+            semantics = semantics',
+            align = align'
+          }
+
 dataVars :: BNBinaryViewPtr -> IO [DataVariable]
 dataVars view =
   alloca $ \countPtr -> do
@@ -223,7 +259,7 @@ symbols view =
 symbolsByName :: BNBinaryViewPtr -> String -> IO [Symbol]
 symbolsByName view name' = do
   syms <- Binja.BinaryView.symbols view
-  pure $ filter (\s -> name s == name') syms
+  pure $ filter (\Symbol {name = n} -> n == name') syms
 
 functionsContaining :: BNBinaryViewPtr -> Word64 -> IO [BNFunctionPtr]
 functionsContaining view addr =
