@@ -3,7 +3,7 @@ module Main where
 import Binja.AnalysisContext
 import Binja.ControlFlowGraph
 import Binja.FFI (getVersionString, shutdown)
-import Binja.Types
+import Binja.Types.Core
 import Control.Monad (forM_)
 import Data.Char (isSpace)
 import System.IO

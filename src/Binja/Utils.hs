@@ -6,7 +6,7 @@ module Binja.Utils
   )
 where
 
-import Binja.Types
+import Binja.Types.Core
 import System.IO (hIsTerminalDevice, stdout)
 
 toBool :: CBool -> Bool

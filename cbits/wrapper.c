@@ -38,4 +38,25 @@ void BNGetFunctionParameterVariablesPtr(BNParameterVariablesWithConfidence* out,
 {
   *out = BNGetFunctionParameterVariables(func);
 }
-	
+
+void BNIsTypeSignedPtr(BNBoolWithConfidence* out, BNType* ty)
+{
+  *out = BNIsTypeSigned(ty);
+}
+
+void BNIsTypeConstPtr(BNBoolWithConfidence* out, BNType* ty)
+{
+  *out = BNIsTypeConst(ty);
+}
+
+void BNIsTypeVolatilePtr(BNBoolWithConfidence* out, BNType* ty)
+{
+  *out = BNIsTypeVolatile(ty);
+}
+
+void BNGetChildTypePtr(BNTypeWithConfidence* out, BNType* ty)
+{
+  *out = BNGetChildType(ty);
+}
+
+

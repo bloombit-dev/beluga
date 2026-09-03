@@ -1,3 +1,5 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Binja.BinaryView
   ( Binja.BinaryView.load,
     Binja.BinaryView.close,
@@ -14,8 +16,10 @@ module Binja.BinaryView
     Binja.BinaryView.functionsContaining,
     Binja.BinaryView.functionsAt,
     Binja.BinaryView.functionsByName,
+    Binja.BinaryView.segments,
     Binja.BinaryView.symbols,
     Binja.BinaryView.symbolsByName,
+    Binja.BinaryView.dataVars,
     Binja.BinaryView.strings,
     Binja.BinaryView.read,
     Binja.BinaryView.symbolAt,
@@ -26,8 +30,9 @@ import Binja.FFI
 import Binja.Function
 import Binja.Plugin
 import Binja.Symbol
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
+import Data.Bits (testBit)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -119,6 +124,55 @@ getFunctionList view =
 functions :: BNBinaryViewPtr -> IO [BNFunctionPtr]
 functions = fmap flList . getFunctionList
 
+getSegmentList :: BNBinaryViewPtr -> IO [BNSegmentPtr]
+getSegmentList view =
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetSegments view countPtr
+    count' <- fromIntegral <$> peek countPtr
+    segmentHandles <- peekArray count' rawPtr
+    c_BNFreeSegmentList rawPtr $ fromIntegral count'
+    pure segmentHandles
+
+segments :: BNBinaryViewPtr -> IO [Segment]
+segments view = do
+  segmentHandles <- getSegmentList view
+  mapM createSegment segmentHandles
+  where
+    segmentExecutableBit = 0
+    segmentWritableBit = 1
+    segmentReadableBit = 2
+    createSegment :: BNSegmentPtr -> IO Segment
+    createSegment segmentHandle = do
+      start' <- c_BNSegmentGetStart segmentHandle
+      end' <- c_BNSegmentGetEnd segmentHandle
+      flags' <- c_BNSegmentGetFlags segmentHandle
+      -- 1,2,4 from SegmentFlag
+      let executable' = testBit flags' segmentExecutableBit
+      let writable' = testBit flags' segmentWritableBit
+      let readable' = testBit flags' segmentReadableBit
+      pure
+        Segment
+          { handle = segmentHandle,
+            start = start',
+            end = end',
+            executable = executable',
+            writable = writable',
+            readable = readable'
+          }
+
+dataVars :: BNBinaryViewPtr -> IO [DataVariable]
+dataVars view =
+  alloca $ \countPtr -> do
+    rawPtr <- c_BNGetDataVariables view countPtr
+    count' <- fromIntegral <$> peek countPtr
+    xs <-
+      if rawPtr == nullPtr || count' == 0
+        then pure []
+        else peekArray count' rawPtr
+    when (rawPtr /= nullPtr && count' /= 0) $
+      c_BNFreeDataVariables rawPtr (fromIntegral count')
+    pure xs
+
 getEntryFunctionList :: BNBinaryViewPtr -> IO FunctionList
 getEntryFunctionList view =
   alloca $ \countPtr -> do
@@ -151,7 +205,7 @@ functionsByName :: BNBinaryViewPtr -> String -> IO [BNFunctionPtr]
 functionsByName view name' = do
   syms <- symbolsByName view name'
   let funcSyms = filter Binja.Symbol.isFunction syms
-  xs <- mapM (functionsAt view . address) funcSyms
+  xs <- mapM (\Symbol {address = addr} -> functionsAt view addr) funcSyms
   pure $ concat xs
 
 symbols :: BNBinaryViewPtr -> IO [Symbol]
@@ -235,19 +289,27 @@ decodeByType ty' = go
 
 read :: BNBinaryViewPtr -> Word64 -> CSize -> IO (Maybe BS.ByteString)
 read view addr len = do
-  dataBuffer <- c_BNReadViewBuffer view addr len
-  if dataBuffer == nullPtr
-    then pure Nothing
+  if addr < 0 || len < 0
+    then
+      error $
+        "Address and length must be positive, address: "
+          ++ show addr
+          ++ " , length: "
+          ++ show len
     else do
-      dataPtr <- c_BNGetDataBufferContents dataBuffer
-      if dataPtr == nullPtr
+      dataBuffer <- c_BNReadViewBuffer view addr len
+      if dataBuffer == nullPtr
         then pure Nothing
         else do
-          bs <- BS.packCStringLen (dataPtr, fromIntegral len)
-          c_BNFreeDataBuffer dataBuffer
-          pure $ Just bs
+          dataPtr <- c_BNGetDataBufferContents dataBuffer
+          if dataPtr == nullPtr
+            then pure Nothing
+            else do
+              bs <- BS.packCStringLen (dataPtr, fromIntegral len)
+              c_BNFreeDataBuffer dataBuffer
+              pure $ Just bs
 
-symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Symbol)
+symbolAt :: BNBinaryViewPtr -> Word64 -> IO (Maybe Binja.Types.Core.Symbol)
 symbolAt view addr = do
   symbolPtr <- c_BNGetSymbolByAddress view addr nullPtr
   if symbolPtr == nullPtr

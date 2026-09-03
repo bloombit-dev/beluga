@@ -36,7 +36,8 @@ library:
     - Binja.Plugin
     - Binja.ReferenceSource
     - Binja.Symbol
-    - Binja.Types
+    - Binja.Types.Core
+    - Binja.Types.Arch
     - Binja.Utils
     - Binja.ControlFlowGraph
     - Callgraph

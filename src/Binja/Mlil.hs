@@ -18,6 +18,7 @@ module Binja.Mlil
     Binja.Mlil.constantToSymbol,
     Binja.Mlil.extractCallDestSymbol,
     Binja.Mlil.instructions,
+    Binja.Mlil.create,
     Binja.Mlil.instructionsFromFunc,
     Binja.Mlil.instructionsFromFuncNoChildren,
     Binja.Mlil.children,
@@ -29,7 +30,7 @@ import Binja.FFI
 import Binja.Function
 import Binja.Llil
 import Binja.ReferenceSource
-import Binja.Types
+import Binja.Types.Core
 import Control.Monad (zipWithM)
 import Data.Maybe (catMaybes)
 
@@ -150,20 +151,20 @@ getFloat inst index' =
   case mlSize inst of
     4 -> pure $ float2Double $ castWord32ToFloat w32
     8 -> pure $ castWord64ToDouble w64
-    _ -> pure $ fromIntegral value
+    _ -> pure $ fromIntegral value'
   where
-    w64 = fromIntegral value :: Word64
+    w64 = fromIntegral value' :: Word64
     w32 = fromIntegral $ w64 .&. 0xffffffff :: Word32
-    value = getOp inst index'
+    value' = getOp inst index'
 
 -- TODO: Lift BNDataBufferPtr into a higher type.
 -- Currently this is uniquely used by MediumLevelILConstData
 getConstantData :: BNFunctionPtr -> BNMediumLevelILInstruction -> CSize -> CSize -> IO BNDataBufferPtr
 getConstantData func inst op1 op2 =
-  c_BNGetConstantData func state value (mlSize inst) nullPtr
+  c_BNGetConstantData func state value' (mlSize inst) nullPtr
   where
     state = getOp inst op1
-    value = getOp inst op2
+    value' = getOp inst op2
 
 getTargetMap :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO TargetMap
 getTargetMap func expr operand =
@@ -309,10 +310,8 @@ extractCallDestSymbol view callInst =
   case callInst of
     Localcall lc ->
       case lc of
-        (MediumLevelILCall MediumLevelILCallRec {dest = d}) -> processDest d
         (MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d}) -> processDest d
         (MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d}) -> processDest d
-        (MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d}) -> processDest d
     Tailcall tc ->
       case tc of
         (MediumLevelILTailcallUntyped MediumLevelILTailcallUntypedRec {dest = d}) -> processDest d
@@ -884,42 +883,44 @@ create func exprIndex' = do
               }
       pure $ ControlFlow $ MediumLevelILRetHint rec
     MLIL_CALL -> do
-      output' <- getVarList func exprIndex' 0
-      dest' <- getExpr func $ getOp rawInst 2
-      params' <- getExprList func exprIndex' 3
-      let rec =
-            MediumLevelILCallRec
-              { output = output',
-                dest = dest',
-                params = params',
-                core = coreInst
-              }
-      pure $ Localcall $ MediumLevelILCall rec
+      error $ "Unexpected MLIL_CALL in ssa form" ++ show coreInst
+    -- output' <- getVarList func exprIndex' 0
+    -- dest' <- getExpr func $ getOp rawInst 2
+    -- params' <- getExprList func exprIndex' 3
+    -- let rec =
+    --      MediumLevelILCallRec
+    --        { output = output',
+    --          dest = dest',
+    --          params = params',
+    --          core = coreInst
+    --        }
+    -- pure $ Localcall $ MediumLevelILCall rec
     MLIL_CALL_UNTYPED -> do
-      outputInst <- getExpr func $ getOp rawInst 0
-      output' <- case outputInst of
-        _ ->
-          error $
-            "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
-              ++ show outputInst
-      dest' <- getExpr func $ getOp rawInst 1
-      paramsInst <- getExpr func $ getOp rawInst 2
-      params' <- case paramsInst of
-        MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
-        _ ->
-          error $
-            "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
-              ++ show outputInst
-      stack' <- getExpr func $ getOp rawInst 3
-      let rec =
-            MediumLevelILCallUntypedRec
-              { output = output',
-                dest = dest',
-                params = params',
-                stack = stack',
-                core = coreInst
-              }
-      pure $ Localcall $ MediumLevelILCallUntyped rec
+      error $ "Unexpected MLIL_CALL_UNTYPED in ssa form" ++ show coreInst
+    -- outputInst <- getExpr func $ getOp rawInst 0
+    -- output' <- case outputInst of
+    --  _ ->
+    --    error $
+    --      "create: Output of MediumLevelILCallUntypedSsa: expected MediumLevelILCallOutputSsa : "
+    --        ++ show outputInst
+    -- dest' <- getExpr func $ getOp rawInst 1
+    -- paramsInst <- getExpr func $ getOp rawInst 2
+    -- params' <- case paramsInst of
+    -- MediumLevelILCallParam (MediumLevelILCallParamRec {src = s}) -> pure s
+    --  _ ->
+    --    error $
+    --      "create: Params of MediumLevelILCallUntypedSsa: expected MediumLevelILCallParamsSsa : "
+    --        ++ show outputInst
+    -- stack' <- getExpr func $ getOp rawInst 3
+    -- let rec =
+    --      MediumLevelILCallUntypedRec
+    --        { output = output',
+    --          dest = dest',
+    --          params = params',
+    --          stack = stack',
+    --          core = coreInst
+    --        }
+    -- pure $ Localcall $ MediumLevelILCallUntyped rec
     MLIL_CALL_PARAM -> do
       src' <- getExprList func exprIndex' 0
       let rec =
@@ -2013,11 +2014,7 @@ create func exprIndex' = do
 children :: MediumLevelILSSAInstruction -> [MediumLevelILSSAInstruction]
 children (Localcall lc) =
   case lc of
-    MediumLevelILCall MediumLevelILCallRec {dest = d, params = p} ->
-      concatMap children p ++ children d ++ p ++ [d]
     MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d, params = p} ->
-      concatMap children p ++ children d ++ p ++ [d]
-    MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d, params = p} ->
       concatMap children p ++ children d ++ p ++ [d]
     MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d, params = p} ->
       concatMap children p ++ children d ++ p ++ [d]

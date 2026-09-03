@@ -9,22 +9,16 @@ module Binja.ControlFlowGraph
 where
 
 import Binja.BasicBlock
-import Binja.Types (BNMlilSSAFunctionPtr, BasicBlockMlilSSA (..), CFGContext (..))
+import Binja.Types.Core (BNMlilSSAFunctionPtr, BasicBlockMlilSSA (..), CFGContext (..))
 import Data.List (find)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
--- outgoing edges becomes a lookup into the graph
---
--- Note: this could be done once during creation and cached
--- incoming edges becomces filter of the graph of keys with children containing block of interest
---
-
-create :: BNMlilSSAFunctionPtr -> IO Binja.Types.CFGContext
+create :: BNMlilSSAFunctionPtr -> IO Binja.Types.Core.CFGContext
 create handle' = do
   -- blocks in function
   rawBlocks <- Binja.BasicBlock.fromMlilSSAFunction handle'
-  liftedBlocks <- mapM Binja.BasicBlock.fromBlockPtr rawBlocks
+  liftedBlocks <- mapM (Binja.BasicBlock.fromBlockPtr handle') rawBlocks
   -- entry block
   entryBlock' <-
     case Data.List.find ((0 ==) . start) liftedBlocks of
@@ -32,20 +26,20 @@ create handle' = do
       Just bb -> pure bb
   -- edges from blocks
   rawOutgoingEdges <- mapM Binja.BasicBlock.outgoingEdges rawBlocks
-  outgoingEdges' <- mapM (mapM Binja.BasicBlock.fromBlockEdge) rawOutgoingEdges
+  outgoingEdges' <- mapM (mapM (Binja.BasicBlock.fromBlockEdge handle')) rawOutgoingEdges
   let graph' =
         Map.fromList $
           zipWith (\vertex edge -> (vertex, Set.fromList edge)) liftedBlocks outgoingEdges'
-  pure $ Binja.Types.CFGContext {entry = entryBlock', graph = graph'}
+  pure $ Binja.Types.Core.CFGContext {entry = entryBlock', graph = graph'}
 
 -- | List of blocks making up function
-blocks :: Binja.Types.CFGContext -> [BasicBlockMlilSSA]
+blocks :: Binja.Types.Core.CFGContext -> [BasicBlockMlilSSA]
 blocks = Map.keys . graph
 
 -- | Number of nodes
-order :: Binja.Types.CFGContext -> Int
+order :: Binja.Types.Core.CFGContext -> Int
 order = Map.size . graph
 
 -- | Numer of edges
-size :: Binja.Types.CFGContext -> Int
+size :: Binja.Types.Core.CFGContext -> Int
 size = sum . map Set.size . Map.elems . graph

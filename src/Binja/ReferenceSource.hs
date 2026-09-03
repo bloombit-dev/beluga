@@ -4,7 +4,7 @@ module Binja.ReferenceSource
 where
 
 import Binja.FFI
-import Binja.Types
+import Binja.Types.Core
 
 data CodeReferenceList = CodeReferenceList
   { crArrayPtr :: !(ForeignPtr BNFunctionPtr),

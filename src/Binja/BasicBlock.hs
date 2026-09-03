@@ -11,7 +11,8 @@ module Binja.BasicBlock
 where
 
 import Binja.FFI
-import Binja.Types (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
+import Binja.Mlil (create)
+import Binja.Types.Core (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
 import Binja.Utils (toBool)
 
 fromMlilFunction :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]
@@ -56,30 +57,33 @@ incomingEdges blockPtr = do
     c_BNFreeBasicBlockEdgeList arrPtr count'
     pure edges
 
-fromBlockPtr :: BNBasicBlockPtr -> IO BasicBlockMlilSSA
-fromBlockPtr blockPtr = do
-  startInstructionIndex <- c_BNGetBasicBlockStart blockPtr
-  endInstructionIndex <- c_BNGetBasicBlockEnd blockPtr
+fromBlockPtr :: BNMlilSSAFunctionPtr -> BNBasicBlockPtr -> IO BasicBlockMlilSSA
+fromBlockPtr funcPtr blockPtr = do
+  startInstructionIndex <- fromIntegral <$> c_BNGetBasicBlockStart blockPtr
+  endInstructionIndex <- fromIntegral <$> c_BNGetBasicBlockEnd blockPtr
+  exprs' <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction funcPtr) [startInstructionIndex .. endInstructionIndex - 1]
+  instructions' <- mapM (Binja.Mlil.create funcPtr) exprs'
   canExit' <- c_BNBasicBlockCanExit blockPtr -- CBool to Bool
   hasInvalidInstructions' <- c_BNBasicBlockHasInvalidInstructions blockPtr -- CBool to Bool
   pure $
     BasicBlockMlilSSA
       { handle = blockPtr,
         start = fromIntegral startInstructionIndex,
-        end = fromIntegral endInstructionIndex - 1,
+        instructions = instructions',
         canExit = toBool canExit',
         hasInvalidInstructions = toBool hasInvalidInstructions'
       }
 
-fromBlockEdge :: BNBasicBlockEdge -> IO BasicBlockEdge
+fromBlockEdge :: BNMlilSSAFunctionPtr -> BNBasicBlockEdge -> IO BasicBlockEdge
 fromBlockEdge
+  funcPtr
   BNBasicBlockEdge
     { ty = edgeTy,
       target = target',
       backEdge = backEdge',
       fallThrough = fallThrough'
     } = do
-    liftedBlock <- fromBlockPtr target'
+    liftedBlock <- fromBlockPtr funcPtr target'
     pure
       BasicBlockEdge
         { ty = edgeTy,

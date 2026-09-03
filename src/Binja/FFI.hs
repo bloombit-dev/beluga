@@ -2,7 +2,7 @@
 
 module Binja.FFI where
 
-import Binja.Types
+import Binja.Types.Core
 
 foreign import ccall unsafe "BNGetCachedMediumLevelILPossibleValueSetPtr"
   c_BNGetCachedMediumLevelILPossibleValueSetPtr ::
@@ -203,6 +203,24 @@ foreign import ccall unsafe "BNGetAnalysisFunctionList"
 
 foreign import ccall unsafe "BNFreeFunctionList"
   c_BNFreeFunctionList :: Ptr BNFunctionPtr -> CSize -> IO ()
+
+foreign import ccall unsafe "BNGetSegments"
+  c_BNGetSegments ::
+    BNBinaryViewPtr ->
+    Ptr CSize ->
+    IO (Ptr BNSegmentPtr)
+
+foreign import ccall "BNFreeSegmentList"
+  c_BNFreeSegmentList :: Ptr BNSegmentPtr -> CSize -> IO ()
+
+foreign import ccall "BNSegmentGetStart"
+  c_BNSegmentGetStart :: BNSegmentPtr -> IO Word64
+
+foreign import ccall "BNSegmentGetEnd"
+  c_BNSegmentGetEnd :: BNSegmentPtr -> IO Word64
+
+foreign import ccall "BNSegmentGetFlags"
+  c_BNSegmentGetFlags :: BNSegmentPtr -> IO Word32
 
 foreign import ccall unsafe "BNGetSymbols"
   c_BNGetSymbols ::
@@ -451,3 +469,15 @@ foreign import ccall "BNFreeILInstructionList"
 
 foreign import ccall "BNGetArchitectureName"
   c_BNGetArchitectureName :: BNArchPtr -> IO CString
+
+foreign import ccall "BNGetDataVariables"
+  c_BNGetDataVariables :: BNBinaryViewPtr -> Ptr CSize -> IO (Ptr DataVariable)
+
+foreign import ccall "BNFreeDataVariables"
+  c_BNFreeDataVariables :: Ptr DataVariable -> CSize -> IO ()
+
+foreign import ccall "BNGetImageBase"
+  c_BNGetImageBase :: BNBinaryViewPtr -> IO Word64
+
+foreign import ccall "BNGetEntryPoint"
+  c_BNGetEntryPoint :: BNBinaryViewPtr -> IO Word64

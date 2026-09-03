@@ -33,13 +33,15 @@ where
 
 import Binja.BinaryView
 import Binja.ControlFlowGraph
+import Binja.FFI (c_BNGetEntryPoint, c_BNGetImageBase)
 import Binja.Function
 import Binja.Mlil
-import Binja.Types
+import Binja.Types.Core
 import Binja.Utils
 import Data.Map as Map
 import Data.Maybe (catMaybes)
 import Data.Set as Set
+import Numeric (showHex)
 
 -- |
 --
@@ -69,6 +71,11 @@ create filename' options = do
   entryFunctionContexts <- mapM createFunctionContext entryFunctions'
   symbols' <- Binja.BinaryView.symbols viewHandle'
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
+  imageBase' <- c_BNGetImageBase viewHandle'
+  entryPoint' <- c_BNGetEntryPoint viewHandle'
+  segments' <- Binja.BinaryView.segments viewHandle'
+  -- Only keep full confidence data variables
+  dataVars' <- Prelude.filter (\DataVariable {typeConfidence = tc} -> tc == 255) <$> Binja.BinaryView.dataVars viewHandle'
   pure
     AnalysisContext
       { viewHandle = viewHandle',
@@ -77,7 +84,11 @@ create filename' options = do
         entryFunction = entryFunctionContext,
         entryFunctions = entryFunctionContexts,
         symbols = symbols',
-        strings = strings'
+        strings = strings',
+        imageBase = imageBase',
+        entryPoint = entryPoint',
+        dataVars = dataVars',
+        segments = segments'
       }
 
 createFunctionContext :: BNFunctionPtr -> IO FunctionContext
@@ -116,7 +127,7 @@ createSSAVariableContext var' func = do
 -- | Acquire the symbol at address if one exists.
 symbolAt :: AnalysisContext -> Word64 -> Maybe Symbol
 symbolAt AnalysisContext {symbols = syms} requestAddr =
-  case Prelude.filter ((requestAddr ==) . address) syms of
+  case Prelude.filter (\Symbol {address = addr} -> (requestAddr ==) addr) syms of
     [] -> Nothing
     [sym] -> Just sym
     _ -> error $ "Binja.AnalysisContext.symbolAt: Multiple symbols at: " ++ show requestAddr
@@ -145,10 +156,8 @@ extractCallDestSymbol context callInst =
   case callInst of
     Localcall lc ->
       case lc of
-        (MediumLevelILCall MediumLevelILCallRec {dest = d}) -> processDest d
         (MediumLevelILCallSsa MediumLevelILCallSsaRec {dest = d}) -> processDest d
         (MediumLevelILCallUntypedSsa MediumLevelILCallUntypedSsaRec {dest = d}) -> processDest d
-        (MediumLevelILCallUntyped MediumLevelILCallUntypedRec {dest = d}) -> processDest d
     Tailcall tc ->
       case tc of
         (MediumLevelILTailcallUntyped MediumLevelILTailcallUntypedRec {dest = d}) -> processDest d
@@ -172,14 +181,13 @@ extractCallDestSymbol context callInst =
 -- __Assumption__: It is assumed the function context is present in the functions
 -- field of AnalysisContext.
 callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
-callers analysisContext functionContext =
+callers analysisContext FunctionContext {instructions = insts} =
   Set.fromList $
     catMaybes $
       Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
         Prelude.filter isCall $
           concat $
-            Prelude.map Binja.Mlil.children $
-              Binja.Types.instructions functionContext
+            Prelude.map Binja.Mlil.children insts
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
     isCall (Localcall _) = True
@@ -199,15 +207,19 @@ close = Binja.BinaryView.close . viewHandle
 summary :: AnalysisContext -> IO String
 summary analysisContext = do
   colors <- Binja.Utils.getColors
-  let functionCount = magenta colors $ show $ length $ Binja.Types.functions analysisContext
-      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.functions analysisContext
+  let functionCount = magenta colors $ show $ length $ Binja.Types.Core.functions analysisContext
+      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.Core.functions analysisContext
       entryFunction' =
-        case Binja.Types.entryFunction analysisContext of
+        case Binja.Types.Core.entryFunction analysisContext of
           Nothing -> magenta colors $ "No entry function."
-          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.symbol f)
-      entryFunctions' = magenta colors $ show $ length $ Binja.Types.entryFunctions analysisContext
-      stringCount = magenta colors $ show $ length $ Binja.Types.strings analysisContext
-      symbolCount = magenta colors $ show $ length $ Binja.Types.symbols analysisContext
+          Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.Core.symbol f)
+      entryFunctions' = magenta colors $ show $ length $ Binja.Types.Core.entryFunctions analysisContext
+      stringCount = magenta colors $ show $ length $ Binja.Types.Core.strings analysisContext
+      symbolCount = magenta colors $ show $ length $ Binja.Types.Core.symbols analysisContext
+      dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
+      imageBase' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.imageBase analysisContext
+      entryPoint' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.entryPoint analysisContext
+      segmentCount = magenta colors $ ("0x" ++) $ show $ length $ Binja.Types.Core.segments analysisContext
   pure $
     " ["
       ++ (green colors) "+"
@@ -243,4 +255,24 @@ summary analysisContext = do
       ++ (green colors) "+"
       ++ "] Symbol count: "
       ++ symbolCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Full confidence DataVariable count: "
+      ++ dataVarCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Image base address: "
+      ++ imageBase'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Entry point address: "
+      ++ entryPoint'
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Segment count: "
+      ++ segmentCount
       ++ "\n"
