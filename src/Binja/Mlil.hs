@@ -151,20 +151,20 @@ getFloat inst index' =
   case mlSize inst of
     4 -> pure $ float2Double $ castWord32ToFloat w32
     8 -> pure $ castWord64ToDouble w64
-    _ -> pure $ fromIntegral value
+    _ -> pure $ fromIntegral value'
   where
-    w64 = fromIntegral value :: Word64
+    w64 = fromIntegral value' :: Word64
     w32 = fromIntegral $ w64 .&. 0xffffffff :: Word32
-    value = getOp inst index'
+    value' = getOp inst index'
 
 -- TODO: Lift BNDataBufferPtr into a higher type.
 -- Currently this is uniquely used by MediumLevelILConstData
 getConstantData :: BNFunctionPtr -> BNMediumLevelILInstruction -> CSize -> CSize -> IO BNDataBufferPtr
 getConstantData func inst op1 op2 =
-  c_BNGetConstantData func state value (mlSize inst) nullPtr
+  c_BNGetConstantData func state value' (mlSize inst) nullPtr
   where
     state = getOp inst op1
-    value = getOp inst op2
+    value' = getOp inst op2
 
 getTargetMap :: BNMlilSSAFunctionPtr -> CSize -> CSize -> IO TargetMap
 getTargetMap func expr operand =
