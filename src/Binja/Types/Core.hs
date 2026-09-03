@@ -54,7 +54,9 @@ module Binja.Types.Core
     Binja.Types.Arch.BNArchPtr,
     DataVariable (..),
     Segment (..),
+    Section (..),
     BNSegmentPtr,
+    BNSectionPtr,
     BNTypeWithConfidence (..),
     BNBoolWithConfidence (..),
     BNTypeClass (..),
@@ -384,6 +386,10 @@ data BNSegment_
 
 type BNSegmentPtr = Ptr BNSegment_
 
+data BNSection_
+
+type BNSectionPtr = Ptr BNSection_
+
 type TargetMap = [(CULLong, CULLong)]
 
 -- | Note: Algebra.Graph.Labelled provided by Alga will be expanded on its next release
@@ -410,7 +416,8 @@ data AnalysisContext = AnalysisContext
     dataVars :: [DataVariable],
     imageBase :: Word64,
     entryPoint :: Word64,
-    segments :: [Segment]
+    segments :: [Segment],
+    sections :: [Section]
   }
 
 -- | Higher level abstraction of a medium level IL SSA variant function
@@ -2693,3 +2700,34 @@ data Segment = Segment
     readable :: Bool
   }
   deriving (Show)
+
+data BNSectionSemantics
+  = DefaultSectionSemantics
+  | ReadOnlyCodeSectionSemantics
+  | ReadOnlyDataSectionSemantics
+  | ReadWriteDataSectionSemantics
+  | ExternalSectionSemantics
+  deriving (Show, Eq, Enum)
+
+data Section = Section
+  { handle :: BNSectionPtr,
+    name :: String,
+    start :: Word64,
+    end :: Word64,
+    semantics :: BNSectionSemantics,
+    align :: Word64
+  }
+
+instance Show Section where
+  show (Section _ name' start' end' semantics' align') =
+    "Section {name = "
+      ++ show name'
+      ++ ", start address = 0x"
+      ++ showHex start' ""
+      ++ ", end address = 0x"
+      ++ showHex end' ""
+      ++ ", semantics = "
+      ++ show semantics'
+      ++ ", alignment = "
+      ++ show align'
+      ++ "}"

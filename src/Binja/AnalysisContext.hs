@@ -74,6 +74,7 @@ create filename' options = do
   imageBase' <- c_BNGetImageBase viewHandle'
   entryPoint' <- c_BNGetEntryPoint viewHandle'
   segments' <- Binja.BinaryView.segments viewHandle'
+  sections' <- Binja.BinaryView.sections viewHandle'
   -- Only keep full confidence data variables
   dataVars' <- Prelude.filter (\DataVariable {typeConfidence = tc} -> tc == 255) <$> Binja.BinaryView.dataVars viewHandle'
   pure
@@ -88,7 +89,8 @@ create filename' options = do
         imageBase = imageBase',
         entryPoint = entryPoint',
         dataVars = dataVars',
-        segments = segments'
+        segments = segments',
+        sections = sections'
       }
 
 createFunctionContext :: BNFunctionPtr -> IO FunctionContext
@@ -219,7 +221,8 @@ summary analysisContext = do
       dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
       imageBase' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.imageBase analysisContext
       entryPoint' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.entryPoint analysisContext
-      segmentCount = magenta colors $ ("0x" ++) $ show $ length $ Binja.Types.Core.segments analysisContext
+      segmentCount = magenta colors $ show $ length $ Binja.Types.Core.segments analysisContext
+      sectionCount = magenta colors $ show $ length $ Binja.Types.Core.sections analysisContext
   pure $
     " ["
       ++ (green colors) "+"
@@ -275,4 +278,9 @@ summary analysisContext = do
       ++ (green colors) "+"
       ++ "] Segment count: "
       ++ segmentCount
+      ++ "\n"
+      ++ " ["
+      ++ (green colors) "+"
+      ++ "] Section count: "
+      ++ sectionCount
       ++ "\n"
