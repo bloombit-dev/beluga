@@ -38,7 +38,6 @@ library:
     - Binja.Symbol
     - Binja.Types.Core
     - Binja.Types.Arch
-    - Binja.Types.DataVariable
     - Binja.Utils
     - Binja.ControlFlowGraph
     - Callgraph

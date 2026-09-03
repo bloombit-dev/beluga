@@ -69,7 +69,8 @@ create filename' options = do
   entryFunctionContexts <- mapM createFunctionContext entryFunctions'
   symbols' <- Binja.BinaryView.symbols viewHandle'
   strings' <- catMaybes <$> Binja.BinaryView.strings viewHandle'
-  dataVars' <- Binja.BinaryView.dataVars viewHandle'
+  -- Only keep full confidence data variables
+  dataVars' <- Prelude.filter (\DataVariable {typeConfidence = tc} -> tc == 255) <$> Binja.BinaryView.dataVars viewHandle'
   pure
     AnalysisContext
       { viewHandle = viewHandle',
