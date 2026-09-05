@@ -10,23 +10,17 @@
 -- @Binja.AnalysisContext@ extracts and lifts low level types from binary ninja into Beluga's central
 -- abstraction. This is the recommended interface for most users.
 --
--- [/Reasons not to use:/]
---
--- * Less data than AnalysisContext provides is required and have limited hardware.
--- * AnalysisContext is fixed to the SSA variant of Medium Level IL.
---
 -- [/Reasons to use:/]
 --
 -- * Extracts and lifts the common types required by most program analysis in a single call.
 -- * Abstracts away many low level FFI calls and types.
 -- * Creates a single type that can be queried in pure functions (no further IO calls required for most analysis).
---   This lends itself to making things easier in creating parallel code.
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
-    Binja.AnalysisContext.summary,
+    Binja.AnalysisContext.contains,
     Binja.AnalysisContext.close,
   )
 where
@@ -55,6 +49,14 @@ import Numeric (showHex)
 --   * Set analysis.mode.maxFunctionSize to 0 (disables max function size)
 --   * Set analysis.mode.maxFunctionAnalysisTime to 0 (disables timeouts)
 --   * Set analysis.mode` to intermediate to disable HLIL generation
+--
+-- > main :: IO ()
+-- > main = do
+-- >   let options =
+-- >   "{\"analysis.mode\": \"intermediate\","
+-- >     ++ "\"analysis.limits.maxFunctionSize\": 0,"
+-- >     ++ "\"analysis.limits.maxFunctionAnalysisTime\": 0}"
+-- >   context <- Binja.AnalysisContext.create "mali_kutf.ko" options
 create ::
   -- | Filename to an executable or an existing binja database (bndb)
   String ->
@@ -196,6 +198,11 @@ callers analysisContext FunctionContext {instructions = insts} =
     isCall (Tailcall _) = True
     isCall (Syscall _) = True
     isCall _ = False
+
+-- | Return all FunctionContext which contains an address
+contains :: AnalysisContext -> Word64 -> [FunctionContext]
+contains AnalysisContext {functions = functions'} address' =
+  Prelude.filter (\FunctionContext {cfg = cfg'} -> Binja.ControlFlowGraph.contains cfg' address') functions'
 
 -- |
 --  Must be called once finished with an AnalysisContext to avoid handle leak.

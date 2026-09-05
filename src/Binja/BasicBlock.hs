@@ -7,12 +7,13 @@ module Binja.BasicBlock
     Binja.BasicBlock.incomingEdges,
     Binja.BasicBlock.fromBlockPtr,
     Binja.BasicBlock.fromBlockEdge,
+    Binja.BasicBlock.contains,
   )
 where
 
 import Binja.FFI
 import Binja.Mlil (create)
-import Binja.Types.Core (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, alloca, castPtr, nullPtr, peek, peekArray)
+import Binja.Types.Core (BNBasicBlockEdge (..), BNBasicBlockPtr, BNMlilFunctionPtr, BNMlilSSAFunctionPtr, BasicBlockEdge (..), BasicBlockMlilSSA (..), Ptr, Word64, alloca, castPtr, nullPtr, peek, peekArray)
 import Binja.Utils (toBool)
 
 fromMlilFunction :: BNMlilFunctionPtr -> IO [BNBasicBlockPtr]
@@ -61,6 +62,9 @@ fromBlockPtr :: BNMlilSSAFunctionPtr -> BNBasicBlockPtr -> IO BasicBlockMlilSSA
 fromBlockPtr funcPtr blockPtr = do
   startInstructionIndex <- fromIntegral <$> c_BNGetBasicBlockStart blockPtr
   endInstructionIndex <- fromIntegral <$> c_BNGetBasicBlockEnd blockPtr
+  sourceBasicBlockPtr <- c_BNGetBasicBlockSource blockPtr
+  startAddress' <- fromIntegral <$> c_BNGetBasicBlockStart sourceBasicBlockPtr
+  endAddress' <- fromIntegral <$> c_BNGetBasicBlockEnd sourceBasicBlockPtr
   exprs' <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction funcPtr) [startInstructionIndex .. endInstructionIndex - 1]
   instructions' <- mapM (Binja.Mlil.create funcPtr) exprs'
   canExit' <- c_BNBasicBlockCanExit blockPtr -- CBool to Bool
@@ -68,7 +72,8 @@ fromBlockPtr funcPtr blockPtr = do
   pure $
     BasicBlockMlilSSA
       { handle = blockPtr,
-        start = fromIntegral startInstructionIndex,
+        startAddress = startAddress',
+        endAddress = endAddress',
         instructions = instructions',
         canExit = toBool canExit',
         hasInvalidInstructions = toBool hasInvalidInstructions'
@@ -91,3 +96,8 @@ fromBlockEdge
           backEdge = Binja.Utils.toBool backEdge',
           fallThrough = Binja.Utils.toBool fallThrough'
         }
+
+-- | True if a block contains an address
+contains :: BasicBlockMlilSSA -> Word64 -> Bool
+contains BasicBlockMlilSSA {startAddress = start', endAddress = end'} address =
+  address >= start' || address <= end'
