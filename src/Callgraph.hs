@@ -89,7 +89,7 @@ mostCalled graph' =
     v : vs -> Just $ fst $ foldr step (v, value' v) vs
   where
     value' :: Vertex -> Int
-    value' v = length (Callgraph.callers graph' v)
+    value' v = Prelude.length (Callgraph.callers graph' v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
@@ -108,8 +108,8 @@ mostConnected graph' =
   where
     value' :: Vertex -> Int
     value' v =
-      length (Callgraph.callers graph' v)
-        + length (callees graph' v)
+      Prelude.length (Callgraph.callers graph' v)
+        + Prelude.length (callees graph' v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =

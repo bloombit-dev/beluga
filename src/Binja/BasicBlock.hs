@@ -67,8 +67,8 @@ fromBlockPtr funcPtr blockPtr = do
   endAddress' <- fromIntegral <$> c_BNGetBasicBlockEnd sourceBasicBlockPtr
   exprs' <- mapM (c_BNGetMediumLevelILSSAIndexForInstruction funcPtr) [startInstructionIndex .. endInstructionIndex - 1]
   instructions' <- mapM (Binja.Mlil.create funcPtr) exprs'
-  canExit' <- c_BNBasicBlockCanExit blockPtr -- CBool to Bool
-  hasInvalidInstructions' <- c_BNBasicBlockHasInvalidInstructions blockPtr -- CBool to Bool
+  canExit' <- c_BNBasicBlockCanExit blockPtr
+  hasInvalidInstructions' <- c_BNBasicBlockHasInvalidInstructions blockPtr
   pure $
     BasicBlockMlilSSA
       { handle = blockPtr,

@@ -50,4 +50,4 @@ size = sum . map Set.size . Map.elems . graph
 
 -- | True if any block in the control flow graph contains an address
 contains :: Binja.Types.Core.CFGContext -> Word64 -> Bool
-contains cfg address = any (address ==) $ map startAddress $ blocks cfg
+contains cfg address = any (flip Binja.BasicBlock.contains address) $ blocks cfg

@@ -143,6 +143,10 @@ foreign import ccall unsafe "BNGetBasicBlockEnd"
   c_BNGetBasicBlockEnd ::
     BNBasicBlockPtr -> IO Word64
 
+foreign import ccall unsafe "BNGetBasicBlockLength"
+  c_BNGetBasicBlockLength ::
+    BNBasicBlockPtr -> IO Word64
+
 foreign import ccall unsafe "BNBasicBlockCanExit"
   c_BNBasicBlockCanExit ::
     BNBasicBlockPtr -> IO CBool
@@ -415,6 +419,14 @@ foreign import ccall "BNGetVersionString"
 getVersionString :: IO String
 getVersionString = do
   cStr <- c_BNGetVersionString
+  peekCString cStr
+
+foreign import ccall "BNGetActiveUpdateChannel"
+  c_BNGetActiveUpdateChannel :: IO CString
+
+getActiveUpdateChannel :: IO String
+getActiveUpdateChannel = do
+  cStr <- c_BNGetActiveUpdateChannel
   peekCString cStr
 
 foreign import ccall "BNSetLicense"
