@@ -21,6 +21,8 @@ module Binja.AnalysisContext
     Binja.AnalysisContext.topLevelInstructions,
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
+    Binja.AnalysisContext.callerSites,
+    Binja.AnalysisContext.callInstructions,
     Binja.AnalysisContext.extractCallDestSymbol,
     Binja.AnalysisContext.contains,
     Binja.AnalysisContext.summary,
@@ -188,10 +190,10 @@ extractCallDestSymbol context callInst =
 -- __Assumption__: It is assumed the function context is present in the functions
 -- field of AnalysisContext.
 callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
-callers analysisContext funcContext =
+callers analysisContext functionContext =
   Set.fromList $
     Prelude.map Binja.Types.Core.symbol $
-      Prelude.filter (flip callsTarget $ Binja.Types.Core.symbol funcContext) $
+      Prelude.filter (flip callsTarget $ Binja.Types.Core.symbol functionContext) $
         Binja.Types.Core.functions analysisContext
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
@@ -210,6 +212,41 @@ callers analysisContext funcContext =
         catMaybes $
           Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
             allCalls functionContext'
+
+-- | Return all instructions that call a FunctionContext.
+-- Note: extractCallDestSymbol will never resolve all call targets implying
+-- this function will never have perfect accuracy
+callerSites :: AnalysisContext -> FunctionContext -> Set.Set MediumLevelILSSAInstruction
+callerSites analysisContext FunctionContext {symbol = target'} =
+  Set.fromList $
+    Prelude.filter (flip callsTarget target') $
+      Prelude.filter isCall $
+        Binja.AnalysisContext.instructions analysisContext
+  where
+    isCall :: MediumLevelILSSAInstruction -> Bool
+    isCall (Localcall _) = True
+    isCall (Tailcall _) = True
+    isCall (Syscall _) = True
+    isCall _ = False
+
+    callsTarget :: MediumLevelILSSAInstruction -> Symbol -> Bool
+    callsTarget inst symbol' =
+      case Binja.AnalysisContext.extractCallDestSymbol analysisContext inst of
+        Nothing -> False
+        Just candidate' -> symbol' == candidate'
+
+-- | All calls and call instructions in a function
+callInstructions :: FunctionContext -> Set.Set MediumLevelILSSAInstruction
+callInstructions FunctionContext {instructions = insts} =
+  Set.fromList $
+    concat $
+      Prelude.map (\inst -> Prelude.filter isCall $ [inst] ++ children inst) insts
+  where
+    isCall :: MediumLevelILSSAInstruction -> Bool
+    isCall (Localcall _) = True
+    isCall (Tailcall _) = True
+    isCall (Syscall _) = True
+    isCall _ = False
 
 -- | Return all FunctionContext which contains an address
 contains :: AnalysisContext -> Word64 -> [FunctionContext]

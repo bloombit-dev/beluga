@@ -47,6 +47,7 @@ main = do
   let allInsts = Binja.AnalysisContext.instructions context
 
   -- \| Call Graph Analysis
+
   -- \| All callers of a function
   let interestingFuncs = Prelude.filter (findByAddress 0x40fe80) funcs
   _ <- case interestingFuncs of
@@ -54,4 +55,19 @@ main = do
     (hd : tl) -> do
       Prelude.print $ "Callers of: " ++ show hd
       Prelude.print $ show $ Binja.AnalysisContext.callers context hd
+
+  -- \| All instructions that call a function
+  _ <- case interestingFuncs of
+    [] -> error "Interesting function not found."
+    (hd : tl) -> do
+      Prelude.print $ "Caller sites of " ++ show hd
+      Prelude.print $ show $ Binja.AnalysisContext.callerSites context hd
+
+  let jsonObjectDoubleToJsonStringFormat = Prelude.filter (findByAddress 0x409dc0) funcs
+  _ <- case jsonObjectDoubleToJsonStringFormat of
+    [] -> error "Function not found."
+    (hd : tl) -> do
+      Prelude.print $ "Call instructions of " ++ show hd
+      Prelude.print $ show $ length $ Binja.AnalysisContext.callInstructions hd
+
   Binja.AnalysisContext.close context
