@@ -47,10 +47,10 @@ main = do
     forM_ filenames $ \fname -> do
       putStrLn $ " [*] Processing: " ++ fname
       context <- Binja.AnalysisContext.create fname options
-      let functionCount = length $ functions context
-      let entryFunctionCount = length $ entryFunctions context
-      let symbolCount = length $ symbols context
-      let stringCount = length $ strings context
+      let functionCount = Prelude.length $ functions context
+      let entryFunctionCount = Prelude.length $ entryFunctions context
+      let symbolCount = Prelude.length $ symbols context
+      let stringCount = Prelude.length $ strings context
       let blockCount = sum $ Prelude.map (order . cfg) $ functions context
       let totalEdges = sum $ Prelude.map (size . cfg) $ functions context
       log $ "   [*] Function count: " ++ (show functionCount)

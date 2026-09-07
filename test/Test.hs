@@ -915,6 +915,8 @@ main = do
           ++ "\"analysis.limits.maxFunctionSize\": 0,"
           ++ "\"analysis.limits.maxFunctionAnalysisTime\": 0}"
   version' <- getVersionString
+  product' <- getProduct
+  activeUpdateChannel <- getActiveUpdateChannel
   installDirCStr <- c_BNGetInstallDirectory
   installDir <- peekCString installDirCStr
   pluginDirC <- c_BNGetBundledPluginDirectory
@@ -923,6 +925,8 @@ main = do
   userDir <- peekCString userDirC
   colors <- Binja.Utils.getColors
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Version: " ++ (red colors) version'
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Product: " ++ (red colors) product'
+  putStrLn $ "[" ++ (yellow colors) "*" ++ "] Active Update Channel: " ++ (red colors) activeUpdateChannel
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Install Directory: " ++ (magenta colors) installDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] Plugin Directory: " ++ (magenta colors) pluginDir
   putStrLn $ "[" ++ (yellow colors) "*" ++ "] User Directory: " ++ (magenta colors) userDir
@@ -930,8 +934,8 @@ main = do
   forM_ ["./test/android/tegu-bp3a.251105.015/image-tegu-bp3a.251105.015/vendor/bin/getenforce"] $ \fname -> do
     putStrLn $ "[" ++ (yellow colors) "*" ++ "] " ++ (cyan colors) "Processing: " ++ (blue colors) fname
     context <- Binja.AnalysisContext.create fname options
-    let functionInstLengths = map (\FunctionContext {instructions = insts} -> length insts) $ functions context
-    let cfgInstLengths = map (sum . map (\BasicBlockMlilSSA {instructions = insts} -> length insts) . Binja.ControlFlowGraph.blocks . cfg) $ functions context
+    let functionInstLengths = map (\FunctionContext {instructions = insts} -> Prelude.length insts) $ functions context
+    let cfgInstLengths = map (sum . map (\BasicBlockMlilSSA {instructions = insts} -> Prelude.length insts) . Binja.ControlFlowGraph.blocks . cfg) $ functions context
     if functionInstLengths == cfgInstLengths
       then
         putStrLn $ " [" ++ (green colors) "*" ++ "] CFG Inst Count Test: " ++ (magenta colors) "PASS"

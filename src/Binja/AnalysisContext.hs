@@ -10,22 +10,19 @@
 -- @Binja.AnalysisContext@ extracts and lifts low level types from binary ninja into Beluga's central
 -- abstraction. This is the recommended interface for most users.
 --
--- [/Reasons not to use:/]
---
--- * Less data than AnalysisContext provides is required and have limited hardware.
--- * AnalysisContext is fixed to the SSA variant of Medium Level IL.
---
 -- [/Reasons to use:/]
 --
 -- * Extracts and lifts the common types required by most program analysis in a single call.
 -- * Abstracts away many low level FFI calls and types.
 -- * Creates a single type that can be queried in pure functions (no further IO calls required for most analysis).
---   This lends itself to making things easier in creating parallel code.
 module Binja.AnalysisContext
   ( Binja.AnalysisContext.create,
+    Binja.AnalysisContext.instructions,
+    Binja.AnalysisContext.topLevelInstructions,
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
     Binja.AnalysisContext.extractCallDestSymbol,
+    Binja.AnalysisContext.contains,
     Binja.AnalysisContext.summary,
     Binja.AnalysisContext.close,
   )
@@ -55,6 +52,14 @@ import Numeric (showHex)
 --   * Set analysis.mode.maxFunctionSize to 0 (disables max function size)
 --   * Set analysis.mode.maxFunctionAnalysisTime to 0 (disables timeouts)
 --   * Set analysis.mode` to intermediate to disable HLIL generation
+--
+-- > main :: IO ()
+-- > main = do
+-- >   let options =
+-- >   "{\"analysis.mode\": \"intermediate\","
+-- >     ++ "\"analysis.limits.maxFunctionSize\": 0,"
+-- >     ++ "\"analysis.limits.maxFunctionAnalysisTime\": 0}"
+-- >   context <- Binja.AnalysisContext.create "mali_kutf.ko" options
 create ::
   -- | Filename to an executable or an existing binja database (bndb)
   String ->
@@ -183,19 +188,39 @@ extractCallDestSymbol context callInst =
 -- __Assumption__: It is assumed the function context is present in the functions
 -- field of AnalysisContext.
 callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
-callers analysisContext FunctionContext {instructions = insts} =
+callers analysisContext funcContext =
   Set.fromList $
-    catMaybes $
-      Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
-        Prelude.filter isCall $
-          concat $
-            Prelude.map Binja.Mlil.children insts
+    Prelude.map Binja.Types.Core.symbol $
+      Prelude.filter (flip callsTarget $ Binja.Types.Core.symbol funcContext) $
+        Binja.Types.Core.functions analysisContext
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
     isCall (Localcall _) = True
     isCall (Tailcall _) = True
     isCall (Syscall _) = True
     isCall _ = False
+
+    allCalls :: FunctionContext -> [MediumLevelILSSAInstruction]
+    allCalls FunctionContext {instructions = insts} =
+      concat $ Prelude.map (\inst -> Prelude.filter isCall $ [inst] ++ children inst) insts
+
+    callsTarget :: FunctionContext -> Symbol -> Bool
+    callsTarget functionContext' symbol' =
+      Prelude.elem symbol' $
+        catMaybes $
+          Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
+            allCalls functionContext'
+
+-- | Return all FunctionContext which contains an address
+contains :: AnalysisContext -> Word64 -> [FunctionContext]
+contains AnalysisContext {functions = functions'} address' =
+  Prelude.filter (\FunctionContext {cfg = cfg'} -> Binja.ControlFlowGraph.contains cfg' address') functions'
+
+topLevelInstructions :: AnalysisContext -> [MediumLevelILSSAInstruction]
+topLevelInstructions AnalysisContext {functions = funcs} = concat $ Prelude.map (\FunctionContext {instructions = insts} -> insts) funcs
+
+instructions :: AnalysisContext -> [MediumLevelILSSAInstruction]
+instructions = concat . Prelude.map (\inst -> [inst] ++ Binja.Mlil.children inst) . topLevelInstructions
 
 -- |
 --  Must be called once finished with an AnalysisContext to avoid handle leak.
@@ -209,20 +234,20 @@ close = Binja.BinaryView.close . viewHandle
 summary :: AnalysisContext -> IO String
 summary analysisContext = do
   colors <- Binja.Utils.getColors
-  let functionCount = magenta colors $ show $ length $ Binja.Types.Core.functions analysisContext
-      bbCount = magenta colors $ show $ sum $ Prelude.map (length . blocks . cfg) $ Binja.Types.Core.functions analysisContext
+  let functionCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.functions analysisContext
+      bbCount = magenta colors $ show $ sum $ Prelude.map (Prelude.length . blocks . cfg) $ Binja.Types.Core.functions analysisContext
       entryFunction' =
         case Binja.Types.Core.entryFunction analysisContext of
           Nothing -> magenta colors $ "No entry function."
           Just f -> "Entry function: " ++ (magenta colors $ show $ Binja.Types.Core.symbol f)
-      entryFunctions' = magenta colors $ show $ length $ Binja.Types.Core.entryFunctions analysisContext
-      stringCount = magenta colors $ show $ length $ Binja.Types.Core.strings analysisContext
-      symbolCount = magenta colors $ show $ length $ Binja.Types.Core.symbols analysisContext
-      dataVarCount = magenta colors $ show $ length $ Binja.Types.Core.dataVars analysisContext
+      entryFunctions' = magenta colors $ show $ Prelude.length $ Binja.Types.Core.entryFunctions analysisContext
+      stringCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.strings analysisContext
+      symbolCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.symbols analysisContext
+      dataVarCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.dataVars analysisContext
       imageBase' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.imageBase analysisContext
       entryPoint' = magenta colors $ ("0x" ++) $ flip showHex "" $ Binja.Types.Core.entryPoint analysisContext
-      segmentCount = magenta colors $ show $ length $ Binja.Types.Core.segments analysisContext
-      sectionCount = magenta colors $ show $ length $ Binja.Types.Core.sections analysisContext
+      segmentCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.segments analysisContext
+      sectionCount = magenta colors $ show $ Prelude.length $ Binja.Types.Core.sections analysisContext
   pure $
     " ["
       ++ (green colors) "+"
