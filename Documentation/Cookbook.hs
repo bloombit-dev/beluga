@@ -63,11 +63,19 @@ main = do
       Prelude.print $ "Caller sites of " ++ show hd
       Prelude.print $ show $ Binja.AnalysisContext.callerSites context hd
 
+  -- \| All call instructions in a function
   let jsonObjectDoubleToJsonStringFormat = Prelude.filter (findByAddress 0x409dc0) funcs
   _ <- case jsonObjectDoubleToJsonStringFormat of
     [] -> error "Function not found."
     (hd : tl) -> do
       Prelude.print $ "Call instructions of " ++ show hd
       Prelude.print $ show $ length $ Binja.AnalysisContext.callInstructions hd
+
+  -- \| All callees of a function (functions that get called by a given function)
+  _ <- case jsonObjectDoubleToJsonStringFormat of
+    [] -> error "Function not found."
+    (hd : tl) -> do
+      Prelude.print $ "Callees of " ++ show hd
+      Prelude.print $ show $ Binja.AnalysisContext.callees context hd
 
   Binja.AnalysisContext.close context

@@ -21,6 +21,7 @@ module Binja.AnalysisContext
     Binja.AnalysisContext.topLevelInstructions,
     Binja.AnalysisContext.symbolAt,
     Binja.AnalysisContext.callers,
+    Binja.AnalysisContext.callees,
     Binja.AnalysisContext.callerSites,
     Binja.AnalysisContext.callInstructions,
     Binja.AnalysisContext.extractCallDestSymbol,
@@ -193,7 +194,7 @@ callers :: AnalysisContext -> FunctionContext -> Set.Set Symbol
 callers analysisContext functionContext =
   Set.fromList $
     Prelude.map Binja.Types.Core.symbol $
-      Prelude.filter (flip callsTarget $ Binja.Types.Core.symbol functionContext) $
+      Prelude.filter (callsTarget $ Binja.Types.Core.symbol functionContext) $
         Binja.Types.Core.functions analysisContext
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
@@ -206,8 +207,8 @@ callers analysisContext functionContext =
     allCalls FunctionContext {instructions = insts} =
       concat $ Prelude.map (\inst -> Prelude.filter isCall $ [inst] ++ children inst) insts
 
-    callsTarget :: FunctionContext -> Symbol -> Bool
-    callsTarget functionContext' symbol' =
+    callsTarget :: Symbol -> FunctionContext -> Bool
+    callsTarget symbol' functionContext' =
       Prelude.elem symbol' $
         catMaybes $
           Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
@@ -217,9 +218,9 @@ callers analysisContext functionContext =
 -- Note: extractCallDestSymbol will never resolve all call targets implying
 -- this function will never have perfect accuracy
 callerSites :: AnalysisContext -> FunctionContext -> Set.Set MediumLevelILSSAInstruction
-callerSites analysisContext FunctionContext {symbol = target'} =
+callerSites analysisContext FunctionContext {symbol = targetSymbol} =
   Set.fromList $
-    Prelude.filter (flip callsTarget target') $
+    Prelude.filter (callsTarget targetSymbol) $
       Prelude.filter isCall $
         Binja.AnalysisContext.instructions analysisContext
   where
@@ -229,18 +230,25 @@ callerSites analysisContext FunctionContext {symbol = target'} =
     isCall (Syscall _) = True
     isCall _ = False
 
-    callsTarget :: MediumLevelILSSAInstruction -> Symbol -> Bool
-    callsTarget inst symbol' =
+    callsTarget :: Symbol -> MediumLevelILSSAInstruction ->  Bool
+    callsTarget symbol' inst =
       case Binja.AnalysisContext.extractCallDestSymbol analysisContext inst of
         Nothing -> False
         Just candidate' -> symbol' == candidate'
 
--- | All calls and call instructions in a function
-callInstructions :: FunctionContext -> Set.Set MediumLevelILSSAInstruction
-callInstructions FunctionContext {instructions = insts} =
+-- | Return all FunctionContext that call a given FunctionContext
+callees :: AnalysisContext -> FunctionContext -> Set.Set Symbol
+callees analysisContext functionContext =
   Set.fromList $
-    concat $
-      Prelude.map (\inst -> Prelude.filter isCall $ [inst] ++ children inst) insts
+    catMaybes $
+      Prelude.map (Binja.AnalysisContext.extractCallDestSymbol analysisContext) $
+        callInstructions functionContext
+
+-- | All calls and call instructions in a function
+callInstructions :: FunctionContext -> [MediumLevelILSSAInstruction]
+callInstructions FunctionContext {instructions = insts} =
+  concat $
+    Prelude.map (\inst -> Prelude.filter isCall $ [inst] ++ children inst) insts
   where
     isCall :: MediumLevelILSSAInstruction -> Bool
     isCall (Localcall _) = True

@@ -109,7 +109,7 @@ mostConnected graph' =
     value' :: Vertex -> Int
     value' v =
       Prelude.length (Callgraph.callers graph' v)
-        + Prelude.length (callees graph' v)
+        + Prelude.length (Callgraph.callees graph' v)
 
     step :: Vertex -> (Vertex, Int) -> (Vertex, Int)
     step candidate (curVertex, curVal) =
