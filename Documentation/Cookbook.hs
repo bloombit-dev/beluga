@@ -7,6 +7,7 @@ import Binja.BasicBlock
 import Binja.BinaryView
 import Binja.ControlFlowGraph
 import Binja.Types.Core
+import Binja.FFI
 import Data.List (maximumBy, sortBy)
 import Data.Ord (comparing)
 
@@ -77,5 +78,32 @@ main = do
     (hd : tl) -> do
       Prelude.print $ "Callees of " ++ show hd
       Prelude.print $ show $ Binja.AnalysisContext.callees context hd
+
+  -- \| Get Version string (example: "6.0.10601 Ultimate")
+  version' <- getVersionString
+  Prelude.print $ "Version: " ++ version'
+
+  -- \| Get Product string
+  product' <- getProduct
+  Prelude.print $ "Product: " ++ product'
+
+  -- \| Get active update channel
+  activeUpdateChannel <- getActiveUpdateChannel
+  Prelude.print $ "Active update channel: " ++ activeUpdateChannel
+
+  -- \| Get install directory
+  installDirCStr <- c_BNGetInstallDirectory
+  installDir <- peekCString installDirCStr
+  Prelude.print $ "Install directory: " ++ installDir
+
+  -- \| Get plugin directory
+  pluginDirC <- c_BNGetBundledPluginDirectory
+  pluginDir <- peekCString pluginDirC
+  Prelude.print $ "Plugin directory: " ++ pluginDir
+
+  -- \| Get user directory
+  userDirC <- c_BNGetUserDirectory
+  userDir <- peekCString userDirC
+  Prelude.print $ "User directory: " ++ userDir
 
   Binja.AnalysisContext.close context

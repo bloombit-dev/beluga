@@ -230,7 +230,7 @@ callerSites analysisContext FunctionContext {symbol = targetSymbol} =
     isCall (Syscall _) = True
     isCall _ = False
 
-    callsTarget :: Symbol -> MediumLevelILSSAInstruction ->  Bool
+    callsTarget :: Symbol -> MediumLevelILSSAInstruction -> Bool
     callsTarget symbol' inst =
       case Binja.AnalysisContext.extractCallDestSymbol analysisContext inst of
         Nothing -> False
