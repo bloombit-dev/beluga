@@ -437,7 +437,13 @@ data FunctionContext = FunctionContext
     architecture :: Binja.Types.Arch.Architecture,
     cfg :: CFGContext
   }
-  deriving (Show)
+
+instance Show FunctionContext where
+  show (FunctionContext _ _ symbol' _ _ _ _ _ _ _) =
+    "FunctionContext {"
+      ++ "  "
+      ++ show symbol'
+      ++ " }"
 
 -- | Higher level abstract of ssa variable defintion site (if exists) and use sites
 data SSAVariableContext = SSAVariableContext
@@ -568,7 +574,8 @@ data BasicBlockEdge = BasicBlockEdge
 
 data BasicBlockMlilSSA = BasicBlockMlilSSA
   { handle :: !BNBasicBlockPtr,
-    start :: !CSize,
+    startAddress :: !Word64,
+    endAddress :: !Word64,
     instructions :: [MediumLevelILSSAInstruction],
     canExit :: !Bool,
     hasInvalidInstructions :: !Bool
