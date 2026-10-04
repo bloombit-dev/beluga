@@ -6,8 +6,8 @@ import Binja.AnalysisContext
 import Binja.BasicBlock
 import Binja.BinaryView
 import Binja.ControlFlowGraph
-import Binja.Types.Core
 import Binja.FFI
+import Binja.Types.Core
 import Data.List (maximumBy, sortBy)
 import Data.Ord (comparing)
 
